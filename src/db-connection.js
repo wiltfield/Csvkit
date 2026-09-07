@@ -55,6 +55,49 @@ export async function testConnection(connStr) {
   }
 }
 
+// Runs a SELECT query against the relay's /query endpoint.
+// Returns { ok: true, rows } or { ok: false, error }.
+export async function runQuery(connStr, sql) {
+  try {
+    const res = await fetch(`${RELAY_BASE}/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ connectionString: connStr, sql }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) {
+      return { ok: false, error: data.error || `Relay returned ${res.status}.` };
+    }
+    return { ok: true, rows: data.rows || [] };
+  } catch (err) {
+    return { ok: false, error: 'Could not reach the relay. Check your connection.' };
+  }
+}
+
+// Runs one or more CREATE TABLE / INSERT statements against the relay's
+// /insert endpoint. `statements` can be a single SQL string containing
+// multiple statements, or an array of statement strings.
+// Returns { ok: true } or { ok: false, error }.
+export async function runInsert(connStr, statements) {
+  const list = Array.isArray(statements)
+    ? statements
+    : statements.split(';').map((s) => s.trim()).filter(Boolean);
+  try {
+    const res = await fetch(`${RELAY_BASE}/insert`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ connectionString: connStr, statements: list }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) {
+      return { ok: false, error: data.error || `Relay returned ${res.status}.` };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: 'Could not reach the relay. Check your connection.' };
+  }
+}
+
 // Wires the Connect/Disconnect UI. `elements` are DOM nodes already present
 // in the page's HTML (see csvsql.html / sql2csv.html markup):
 //   connectBtn      - "Connect DB" button, visible when disconnected
