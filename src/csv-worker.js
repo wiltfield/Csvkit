@@ -387,7 +387,8 @@ function generateSQL(rows, tableName, dialectKey) {
   });
 
   const sql = [createStmt, '', ...insertStmts].join('\n');
-  return { sql, types: logicalTypes };
+  const statements = [createStmt, ...insertStmts];
+  return { sql, statements, types: logicalTypes };
 }
 
 self.onmessage = (e) => {
@@ -428,8 +429,8 @@ self.onmessage = (e) => {
       const { json } = toJSON(rows);
       self.postMessage({ ok: true, json });
     } else if (op === 'sql') {
-      const { sql, types } = generateSQL(rows, tableName, dialect);
-      self.postMessage({ ok: true, sql, types });
+      const { sql, statements, types } = generateSQL(rows, tableName, dialect);
+      self.postMessage({ ok: true, sql, statements, types });
     } else {
       self.postMessage({ ok: false, error: `Unknown operation: ${op}` });
     }
