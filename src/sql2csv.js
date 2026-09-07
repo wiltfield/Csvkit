@@ -1,6 +1,7 @@
 import { createTerminal } from './terminal.js';
 import { setupSaveButton } from './download.js';
 import { saveDraft, loadDraft, clearDraft, debounce } from './draft-storage.js';
+import { setupConnectionUI } from './db-connection.js';
 
 const DRAFT_KEY = 'sql2csv';
 
@@ -11,6 +12,22 @@ const runBtn = document.getElementById('run-btn');
 const clearBtn = document.getElementById('clear-btn');
 
 let currentOutputRows = null;
+let dbConnected = false;
+
+setupConnectionUI({
+  connectBtn: document.getElementById('db-connect-btn'),
+  statusRow: document.getElementById('db-status-row'),
+  disconnectBtn: document.getElementById('db-disconnect-btn'),
+  formBox: document.getElementById('db-form'),
+  connStrInput: document.getElementById('db-connstr-input'),
+  formConfirm: document.getElementById('db-form-confirm'),
+  formCancel: document.getElementById('db-form-cancel'),
+  confirmBox: document.getElementById('db-disconnect-confirm'),
+  confirmYes: document.getElementById('db-disconnect-yes'),
+  confirmNo: document.getElementById('db-disconnect-no'),
+}, term, (connected) => {
+  dbConnected = connected;
+});
 
 const save = setupSaveButton({
   saveRow: document.getElementById('save-row'),
@@ -29,15 +46,19 @@ const persist = debounce(() => {
 
 queryInput.addEventListener('input', persist);
 
-// Running a query needs a live connection to the user's database, which
-// isn't wired up yet, this is UI-only until the Neon backend relay exists.
+// Actually running the query is wired in a later chunk. For now this just
+// reflects connection state.
 runBtn.addEventListener('click', () => {
   const query = queryInput.value.trim();
   if (!query) {
     term.error('Write a query first.');
     return;
   }
-  term.error('Connect a database first. This isn\u2019t wired up yet.');
+  if (!dbConnected) {
+    term.error('Connect a database first.');
+    return;
+  }
+  term.error('Database is connected, but Run isn\u2019t wired up yet.');
 });
 
 clearBtn.addEventListener('click', () => {
