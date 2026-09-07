@@ -1,7 +1,7 @@
 import { createTerminal } from './terminal.js';
 import { triggerDownload } from './download.js';
 import { saveDraft, loadDraft, clearDraft, clearAllDrafts, debounce } from './draft-storage.js';
-import { setupConnectionUI, isConnected } from './db-connection.js';
+import { setupConnectionUI, isConnected, getConnectionString, runInsert } from './db-connection.js';
 
 const DRAFT_KEY = 'csvsql';
 
@@ -208,14 +208,31 @@ saveFilename.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') saveCancel.click();
 });
 
-// Actually inserting into the DB is wired in a later chunk. For now this
-// just reflects connection state; the insert call itself is still stubbed.
-insertBtn.addEventListener('click', () => {
+// Inserts the generated CREATE TABLE + INSERT statements into the
+// connected database via the relay's /insert endpoint.
+insertBtn.addEventListener('click', async () => {
   if (!dbConnected) {
     term.error('Connect a database first.');
     return;
   }
-  term.error('Database is connected, but insert isn\u2019t wired up yet.');
+  if (!currentSQL) {
+    term.error('Generate SQL first.');
+    return;
+  }
+  const connStr = getConnectionString();
+  if (!connStr) {
+    term.error('Connect a database first.');
+    return;
+  }
+  insertBtn.disabled = true;
+  term.say(`Inserting into "${lastTableName || 'data'}"...`);
+  const result = await runInsert(connStr, currentSQL);
+  insertBtn.disabled = false;
+  if (!result.ok) {
+    term.error(result.error || 'Insert failed.');
+    return;
+  }
+  term.say(`Inserted into "${lastTableName || 'data'}".`);
 });
 
 (function restore() {
