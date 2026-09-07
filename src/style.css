@@ -655,3 +655,28 @@ body {
 .stub-btn:hover {
   opacity: 0.75;
 }
+
+/* ---------- DB connect / disconnect UI ---------- */
+.db-connect {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.db-status-row {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  font-size: 0.9rem;
+}
+
+.db-status-text {
+  color: var(--accent);
+  font-family: "IBM Plex Serif", monospace;
+  font-weight: 600;
+}
+
+.db-form,
+.db-confirm {
+  /* reuses .save-box's hidden-by-default/.visible pattern */
+}
