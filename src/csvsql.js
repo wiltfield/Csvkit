@@ -1,6 +1,7 @@
 import { createTerminal } from './terminal.js';
 import { triggerDownload } from './download.js';
 import { saveDraft, loadDraft, clearDraft, clearAllDrafts, debounce } from './draft-storage.js';
+import { setupConnectionUI, isConnected } from './db-connection.js';
 
 const DRAFT_KEY = 'csvsql';
 
@@ -22,6 +23,23 @@ const saveConfirm = document.getElementById('save-confirm');
 const saveCancel = document.getElementById('save-cancel');
 
 const insertBtn = document.getElementById('insert-db-btn');
+
+let dbConnected = false;
+setupConnectionUI({
+  connectBtn: document.getElementById('db-connect-btn'),
+  statusRow: document.getElementById('db-status-row'),
+  disconnectBtn: document.getElementById('db-disconnect-btn'),
+  formBox: document.getElementById('db-form'),
+  connStrInput: document.getElementById('db-connstr-input'),
+  formConfirm: document.getElementById('db-form-confirm'),
+  formCancel: document.getElementById('db-form-cancel'),
+  confirmBox: document.getElementById('db-disconnect-confirm'),
+  confirmYes: document.getElementById('db-disconnect-yes'),
+  confirmNo: document.getElementById('db-disconnect-no'),
+}, term, (connected) => {
+  dbConnected = connected;
+  insertBtn.classList.toggle('stub-btn', !connected);
+});
 
 const worker = new Worker('src/csv-worker.js');
 
@@ -190,9 +208,14 @@ saveFilename.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') saveCancel.click();
 });
 
-// "Insert into database" is stubbed until the Neon backend relay exists.
+// Actually inserting into the DB is wired in a later chunk. For now this
+// just reflects connection state; the insert call itself is still stubbed.
 insertBtn.addEventListener('click', () => {
-  term.error('Connect a database first. This isn\u2019t wired up yet.');
+  if (!dbConnected) {
+    term.error('Connect a database first.');
+    return;
+  }
+  term.error('Database is connected, but insert isn\u2019t wired up yet.');
 });
 
 (function restore() {
