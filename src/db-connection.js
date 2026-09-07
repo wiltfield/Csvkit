@@ -75,18 +75,20 @@ export async function runQuery(connStr, sql) {
 }
 
 // Runs one or more CREATE TABLE / INSERT statements against the relay's
-// /insert endpoint. `statements` can be a single SQL string containing
-// multiple statements, or an array of statement strings.
+// /insert endpoint. `statements` must be an array of statement strings
+// (the caller generates these directly, so there's no need to split SQL
+// text on semicolons here, which would break on any semicolon inside a
+// quoted value).
 // Returns { ok: true } or { ok: false, error }.
 export async function runInsert(connStr, statements) {
-  const list = Array.isArray(statements)
-    ? statements
-    : statements.split(';').map((s) => s.trim()).filter(Boolean);
+  if (!Array.isArray(statements) || statements.length === 0) {
+    return { ok: false, error: 'No statements to run.' };
+  }
   try {
     const res = await fetch(`${RELAY_BASE}/insert`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ connectionString: connStr, statements: list }),
+      body: JSON.stringify({ connectionString: connStr, statements }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.error) {
