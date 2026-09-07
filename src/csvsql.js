@@ -45,6 +45,7 @@ const worker = new Worker('src/csv-worker.js');
 
 let parsedRows = null;
 let currentSQL = null;
+let currentStatements = null;
 let lastTableName = null;
 let lastDialect = null;
 
@@ -61,6 +62,7 @@ const persist = debounce(() => {
   saveDraft(DRAFT_KEY, {
     parsedRows,
     currentSQL,
+    currentStatements,
     lastTableName,
     lastDialect,
     tableNameValue: tableNameInput.value,
@@ -69,7 +71,7 @@ const persist = debounce(() => {
 });
 
 worker.onmessage = (e) => {
-  const { ok, error, rows, sql } = e.data;
+  const { ok, error, rows, sql, statements } = e.data;
   if (!ok) {
     term.error(error || 'Could not process that file.');
     return;
@@ -85,6 +87,7 @@ worker.onmessage = (e) => {
   }
   // SQL generation result.
   currentSQL = sql;
+  currentStatements = statements;
   lastTableName = tableNameInput.value.trim() || 'data';
   lastDialect = dialectSelect.value;
   renderSQL(sql);
@@ -108,6 +111,7 @@ function handleFile(file) {
   clearDraft(DRAFT_KEY);
   parsedRows = null;
   currentSQL = null;
+  currentStatements = null;
   lastTableName = null;
   optionsPanel.classList.remove('visible');
   saveRow.classList.remove('visible');
@@ -170,6 +174,7 @@ clearBtn.addEventListener('click', () => {
   clearAllDrafts();
   parsedRows = null;
   currentSQL = null;
+  currentStatements = null;
   lastTableName = null;
   tableNameInput.value = '';
   optionsPanel.classList.remove('visible');
@@ -215,7 +220,7 @@ insertBtn.addEventListener('click', async () => {
     term.error('Connect a database first.');
     return;
   }
-  if (!currentSQL) {
+  if (!currentStatements) {
     term.error('Generate SQL first.');
     return;
   }
@@ -226,7 +231,7 @@ insertBtn.addEventListener('click', async () => {
   }
   insertBtn.disabled = true;
   term.say(`Inserting into "${lastTableName || 'data'}"...`);
-  const result = await runInsert(connStr, currentSQL);
+  const result = await runInsert(connStr, currentStatements);
   insertBtn.disabled = false;
   if (!result.ok) {
     term.error(result.error || 'Insert failed.');
@@ -244,6 +249,7 @@ insertBtn.addEventListener('click', async () => {
     if (draft.dialectValue) dialectSelect.value = draft.dialectValue;
     if (draft.currentSQL) {
       currentSQL = draft.currentSQL;
+      currentStatements = draft.currentStatements || null;
       lastTableName = draft.lastTableName;
       lastDialect = draft.lastDialect;
       renderSQL(currentSQL);
