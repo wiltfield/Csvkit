@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>csvstack — csvkit+</title>
+<script>
+  (function () {
+    var saved = localStorage.getItem('theme');
+    document.documentElement.setAttribute('data-theme', saved === 'light' ? 'light' : 'dark');
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=VT323&display=block">
+  <link rel="stylesheet" href="src/style.css">
+</head>
+<body class="op-page">
+
+  <main class="wrap">
+    <a class="back-link" href="index.html">&larr; Back</a>
+
+    <header class="intro">
+      <h1 class="title">csvstack</h1>
+      <p class="lead">Stack multiple CSVs with matching columns into one.</p>
+    </header>
+
+    <div class="drop-zone" id="drop-zone">
+      <p class="lead">Drop CSV files here, or click to choose them. Add as many as you like.</p>
+      <input type="file" id="file-input" accept=".csv" multiple hidden>
+    </div>
+
+    <div class="file-chip-list" id="file-chip-list"></div>
+
+    <div class="options-panel" id="options-panel">
+      <button class="run-btn" type="button" id="run-btn">Stack files</button>
+    </div>
+
+    <section class="output-area" id="output-area" aria-live="polite"></section>
+
+    <div class="action-row">
+      <div class="save-row" id="save-row">
+        <button class="save-btn" type="button" id="save-btn">Save</button>
+      </div>
+      <button class="clear-btn" type="button" id="clear-btn">Clear file</button>
+    </div>
+    <div class="save-box" id="save-box">
+      <label class="field-label" for="save-filename">Filename</label>
+      <input class="text-input" type="text" id="save-filename" value="new.csv">
+      <div class="save-box-actions">
+        <button class="run-btn" type="button" id="save-confirm">Download</button>
+        <button class="run-btn" type="button" id="save-cancel">Cancel</button>
+      </div>
+    </div>
+
+    <div class="terminal" id="terminal"></div>
+  </main>
+
+  <footer class="site-footer">
+    <button class="foot-link" type="button" data-action="about">About</button>
+    <button class="foot-link" type="button" data-action="donate">Donate</button>
+    <button class="foot-link theme-toggle" type="button" id="theme-toggle" aria-pressed="false">
+      Theme
+      <span class="switch" aria-hidden="true">
+        <span class="switch-track">
+          <span class="switch-lever"></span>
+        </span>
+      </span>
+    </button>
+  </footer>
+
+<script type="module" src="src/script.js"></script>
+<script type="module" src="src/csvstack.js"></script>
+</body>
+</html>

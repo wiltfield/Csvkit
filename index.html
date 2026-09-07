@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>csvkit+</title>
+<script>
+  (function () {
+    var saved = localStorage.getItem('theme');
+    document.documentElement.setAttribute('data-theme', saved === 'light' ? 'light' : 'dark');
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=VT323&display=block">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+
+  <main class="wrap">
+    <header class="intro">
+      <h1 class="title">csvkit<span class="plus">+</span></h1>
+      <p class="lead">
+        A small toolkit for working with CSV files. It wraps the most common
+        csvkit operations, cutting, filtering, sorting, converting, and
+        inspecting your data, into one click actions, no command line
+        needed. It also adds new features that expand on the original csvkit, such as csvedit, csvcreate, and more!
+      </p>
+    </header>
+
+    <section class="grid" aria-label="csvkit operations">
+      <button class="op" type="button" data-op="csvlook">csvlook<span>Preview a CSV as a formatted table</span></button>
+      <button class="op" type="button" data-op="csvcut">csvcut<span>Keep specific columns and reorder them</span></button>
+      <button class="op" type="button" data-op="csvgrep">csvgrep<span>Keep rows where a column matches a pattern</span></button>
+      <button class="op" type="button" data-op="csvsort">csvsort<span>Sort rows by one or more columns</span></button>
+      <button class="op" type="button" data-op="csvstat">csvstat<span>Get summary stats per column</span></button>
+      <button class="op" type="button" data-op="csvjoin">csvjoin<span>Join two CSVs on a shared column</span></button>
+      <button class="op" type="button" data-op="csvstack">csvstack<span>Stack multiple CSVs into one</span></button>
+      <button class="op" type="button" data-op="csvclean">csvclean<span>Fix common formatting errors</span></button>
+      <button class="op" type="button" data-op="csvjson">csvjson<span>Convert a CSV to JSON</span></button>
+      <button class="op" type="button" data-op="in2csv">in2csv<span>Convert other formats into CSV</span></button>
+      <button class="op" type="button" data-op="csvsql">csvsql<span>Generate SQL from a CSV</span></button>
+      <button class="op" type="button" data-op="sql2csv">sql2csv<span>Run a SQL query and save as CSV</span></button>
+      <button class="op" type="button" data-op="csvformat">csvformat<span>Convert between CSV dialects and formats</span></button>
+      <button class="op op-plus" type="button" data-op="csvedit">csvedit<span>Edit cells directly, csvkit+ only</span></button>
+      <button class="op op-plus" type="button" data-op="csvcreate">csvcreate<span>Build a new CSV from scratch, csvkit+ only</span></button>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <button class="foot-link" type="button" data-action="about">About</button>
+    <button class="foot-link" type="button" data-action="donate">Donate</button>
+    <button class="foot-link theme-toggle" type="button" id="theme-toggle" aria-pressed="false">
+      Theme
+      <span class="switch" aria-hidden="true">
+        <span class="switch-track">
+          <span class="switch-lever"></span>
+        </span>
+      </span>
+    </button>
+  </footer>
+
+<script type="module" src="src/script.js"></script>
+</body>
+</html>

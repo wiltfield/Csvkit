@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>csvcreate — csvkit+</title>
+<script>
+  (function () {
+    var saved = localStorage.getItem('theme');
+    document.documentElement.setAttribute('data-theme', saved === 'light' ? 'light' : 'dark');
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=VT323&display=block">
+  <link rel="stylesheet" href="src/style.css">
+</head>
+<body class="op-page">
+
+  <main class="wrap">
+    <a class="back-link" href="index.html">&larr; Back</a>
+
+    <header class="intro">
+      <h1 class="title">csvcreate</h1>
+      <p class="lead">Build a new CSV from scratch, using a grid or by pasting raw delimited text.</p>
+    </header>
+
+    <div class="options-panel visible" id="options-panel">
+      <div class="mode-toggle" id="mode-toggle">
+        <button class="mode-btn active" type="button" data-mode="grid">Grid</button>
+        <button class="mode-btn" type="button" data-mode="text">Text</button>
+      </div>
+
+      <div class="edit-toolbar" id="grid-toolbar">
+        <button class="run-btn" type="button" id="add-row-btn">Add row</button>
+        <button class="run-btn" type="button" id="add-col-btn">Add column</button>
+        <button class="run-btn" type="button" id="new-file-btn">New file</button>
+      </div>
+      <div class="edit-grid" id="grid"></div>
+
+      <div class="text-mode-panel" id="text-mode-panel">
+        <div class="field-row">
+          <label class="field-label" for="delimiter-input">Delimiter</label>
+          <input class="text-input" type="text" id="delimiter-input" maxlength="1" value=",">
+        </div>
+        <textarea class="text-input textarea-input" id="text-area" rows="10" placeholder="col1,col2,col3&#10;val1,val2,val3"></textarea>
+      </div>
+    </div>
+
+    <div class="save-row" id="save-row">
+      <button class="save-btn" type="button" id="save-btn">Save</button>
+    </div>
+    <div class="save-box" id="save-box">
+      <label class="field-label" for="save-filename">Filename</label>
+      <input class="text-input" type="text" id="save-filename" value="new.csv">
+      <div class="save-box-actions">
+        <button class="run-btn" type="button" id="save-confirm">Download</button>
+        <button class="run-btn" type="button" id="save-cancel">Cancel</button>
+      </div>
+    </div>
+
+    <div class="terminal" id="terminal"></div>
+  </main>
+
+  <footer class="site-footer">
+    <button class="foot-link" type="button" data-action="about">About</button>
+    <button class="foot-link" type="button" data-action="donate">Donate</button>
+    <button class="foot-link theme-toggle" type="button" id="theme-toggle" aria-pressed="false">
+      Theme
+      <span class="switch" aria-hidden="true">
+        <span class="switch-track">
+          <span class="switch-lever"></span>
+        </span>
+      </span>
+    </button>
+  </footer>
+
+<script type="module" src="src/script.js"></script>
+<script type="module" src="src/csvcreate.js"></script>
+</body>
+</html>
