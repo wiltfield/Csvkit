@@ -25,6 +25,29 @@
       <p class="lead">Run a SQL query against a connected database and save the results as a CSV.</p>
     </header>
 
+    <div class="db-connect" id="db-connect">
+      <button class="run-btn" type="button" id="db-connect-btn">Connect DB</button>
+      <div class="db-status-row hidden" id="db-status-row">
+        <span class="db-status-text">Connected to database</span>
+        <button class="clear-btn" type="button" id="db-disconnect-btn">Disconnect</button>
+      </div>
+      <div class="save-box db-form" id="db-form">
+        <label class="field-label" for="db-connstr-input">Neon connection string</label>
+        <input class="text-input" type="text" id="db-connstr-input" placeholder="postgresql://user:pass@host/dbname">
+        <div class="save-box-actions">
+          <button class="run-btn" type="button" id="db-form-confirm">Connect</button>
+          <button class="run-btn" type="button" id="db-form-cancel">Cancel</button>
+        </div>
+      </div>
+      <div class="save-box db-confirm" id="db-disconnect-confirm">
+        <p class="lead">Disconnect from this database?</p>
+        <div class="save-box-actions">
+          <button class="run-btn" type="button" id="db-disconnect-yes">Disconnect</button>
+          <button class="run-btn" type="button" id="db-disconnect-no">Cancel</button>
+        </div>
+      </div>
+    </div>
+
     <div class="options-panel visible" id="options-panel">
       <div class="field-row">
         <label class="field-label" for="query-input">SQL query</label>
