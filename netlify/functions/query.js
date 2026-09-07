@@ -50,7 +50,8 @@ exports.handler = async (event) => {
 
   const client = new Client({
     connectionString,
-    ssl: { rejectUnauthorized: false }
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 8000
   });
 
   try {
@@ -65,6 +66,7 @@ exports.handler = async (event) => {
   }
 
   try {
+    await client.query('SET statement_timeout = 15000');
     const result = await client.query(sql);
     await client.end();
 
