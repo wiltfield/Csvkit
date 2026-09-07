@@ -1,7 +1,7 @@
 import { createTerminal } from './terminal.js';
 import { setupSaveButton } from './download.js';
 import { saveDraft, loadDraft, clearDraft, debounce } from './draft-storage.js';
-import { setupConnectionUI } from './db-connection.js';
+import { setupConnectionUI, getConnectionString, runQuery } from './db-connection.js';
 
 const DRAFT_KEY = 'sql2csv';
 
@@ -40,15 +40,23 @@ const save = setupSaveButton({
   onSave: () => clearDraft(DRAFT_KEY),
 });
 
+function renderTable(rows) {
+  // rows: array-of-arrays, first row is the header.
+  const [header, ...data] = rows;
+  const thead = `<tr>${header.map((h) => `<th>${h}</th>`).join('')}</tr>`;
+  const tbody = data
+    .map((row) => `<tr>${row.map((c) => `<td>${c ?? ''}</td>`).join('')}</tr>`)
+    .join('');
+  outputArea.innerHTML = `<table class="output-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+}
+
 const persist = debounce(() => {
-  saveDraft(DRAFT_KEY, { queryValue: queryInput.value });
+  saveDraft(DRAFT_KEY, { queryValue: queryInput.value, currentOutputRows });
 });
 
 queryInput.addEventListener('input', persist);
 
-// Actually running the query is wired in a later chunk. For now this just
-// reflects connection state.
-runBtn.addEventListener('click', () => {
+runBtn.addEventListener('click', async () => {
   const query = queryInput.value.trim();
   if (!query) {
     term.error('Write a query first.');
@@ -58,7 +66,35 @@ runBtn.addEventListener('click', () => {
     term.error('Connect a database first.');
     return;
   }
-  term.error('Database is connected, but Run isn\u2019t wired up yet.');
+  const connStr = getConnectionString();
+  if (!connStr) {
+    term.error('Connect a database first.');
+    return;
+  }
+  runBtn.disabled = true;
+  term.say('Running query...');
+  const result = await runQuery(connStr, query);
+  runBtn.disabled = false;
+  if (!result.ok) {
+    term.error(result.error || 'Query failed.');
+    return;
+  }
+  const objRows = result.rows;
+  if (!objRows || objRows.length === 0) {
+    outputArea.innerHTML = '<p class="lead">Query ran successfully but returned no rows.</p>';
+    currentOutputRows = null;
+    save.hide();
+    term.error('No rows returned.');
+    persist();
+    return;
+  }
+  const header = Object.keys(objRows[0]);
+  const dataRows = objRows.map((r) => header.map((h) => r[h]));
+  currentOutputRows = [header, ...dataRows];
+  renderTable(currentOutputRows);
+  save.show();
+  term.say(`Query returned ${objRows.length} row${objRows.length === 1 ? '' : 's'}.`);
+  persist();
 });
 
 clearBtn.addEventListener('click', () => {
@@ -74,6 +110,11 @@ clearBtn.addEventListener('click', () => {
   const draft = loadDraft(DRAFT_KEY);
   if (draft && draft.queryValue) {
     queryInput.value = draft.queryValue;
+    if (draft.currentOutputRows) {
+      currentOutputRows = draft.currentOutputRows;
+      renderTable(currentOutputRows);
+      save.show();
+    }
     term.say('Restored your last session.');
   } else {
     term.say('Connect a database, then write a query.');
