@@ -292,16 +292,6 @@ body {
   border-color: var(--btn-text-hover);
 }
 
-.run-btn:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.run-btn:disabled:hover {
-  color: var(--btn-text);
-  border-color: var(--btn-text);
-}
-
 .options-panel .section-block {
   display: flex;
   flex-direction: column;
@@ -397,15 +387,6 @@ body {
 
 .clear-btn:hover {
   opacity: 0.7;
-}
-
-.clear-btn:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-.clear-btn:disabled:hover {
-  opacity: 0.35;
 }
 
 /* ---------- save (download) ---------- */
