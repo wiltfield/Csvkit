@@ -54,9 +54,17 @@
     <div class="save-box insert-confirm" id="insert-query-confirm">
       <p class="lead" id="insert-query-label">Insert query for this table?</p>
       <div class="save-box-actions">
-        <button class="run-btn" type="button" id="insert-query-append">Append</button>
+        <button class="run-btn" type="button" id="insert-query-stack">Stack</button>
         <button class="run-btn" type="button" id="insert-query-replace">Replace</button>
         <button class="run-btn" type="button" id="insert-query-cancel">Cancel</button>
+      </div>
+    </div>
+
+    <div class="stack-panel hidden" id="stack-panel">
+      <div class="file-chip-list" id="stack-chip-list"></div>
+      <div class="save-box-actions">
+        <button class="run-btn" type="button" id="run-stack-btn">Run stack</button>
+        <button class="clear-btn" type="button" id="clear-stack-btn">Clear stack</button>
       </div>
     </div>
 
