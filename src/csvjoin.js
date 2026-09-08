@@ -77,10 +77,6 @@ function buildColSelect(select, header, selectedValue) {
   if (selectedValue !== undefined) select.value = selectedValue;
 }
 
-function updateHistoryButtons() {
-  if (undoBtn) undoBtn.disabled = !history.canUndo();
-  if (redoBtn) redoBtn.disabled = !history.canRedo();
-}
 
 function snapshot() {
   return {
@@ -112,7 +108,6 @@ function maybeShowOptions() {
     if (!historyStarted) {
       historyStarted = true;
       history.reset(snapshot());
-      updateHistoryButtons();
     }
   }
 }
@@ -152,7 +147,6 @@ worker.onmessage = (e) => {
     save.show();
     term.say(`Joined ${rows.length - 1} row(s).`);
     history.push(snapshot());
-    updateHistoryButtons();
     persist();
   }
 };
@@ -177,7 +171,6 @@ function handleFile(file, side) {
   lastJoinSerialized = null;
   historyStarted = false;
   history.clear();
-  updateHistoryButtons();
   term.say(`Uploading ${side} file...`);
   const reader = new FileReader();
 
@@ -205,13 +198,11 @@ if (undoBtn) {
     const prev = history.undo();
     if (!prev) {
       term.error('Nothing to undo.');
-      updateHistoryButtons();
       return;
     }
     applyState(prev);
     term.say('Undid last change.');
     persist();
-    updateHistoryButtons();
   });
 }
 
@@ -220,13 +211,11 @@ if (redoBtn) {
     const next = history.redo();
     if (!next) {
       term.error('Nothing to redo.');
-      updateHistoryButtons();
       return;
     }
     applyState(next);
     term.say('Redid last change.');
     persist();
-    updateHistoryButtons();
   });
 }
 
@@ -266,7 +255,6 @@ clearBtn.addEventListener('click', () => {
   save.hide();
   historyStarted = false;
   history.clear();
-  updateHistoryButtons();
   term.say('File cleared from storage.');
 });
 
@@ -286,10 +274,8 @@ clearBtn.addEventListener('click', () => {
     }
     historyStarted = true;
     history.reset(snapshot());
-    updateHistoryButtons();
     term.say('Restored your last session.');
   } else {
     term.say('Upload both files.');
-    updateHistoryButtons();
   }
 })();
