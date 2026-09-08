@@ -21,3 +21,15 @@ document.querySelectorAll('.op[data-op]').forEach((btn) => {
     window.location.href = `${btn.dataset.op}.html`;
   });
 });
+
+// footer actions
+document.querySelectorAll('.foot-link[data-action]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const action = btn.dataset.action;
+    if (action === 'about') {
+      window.location.href = 'about.html';
+    } else if (action === 'donate') {
+      window.location.href = 'donate.html';
+    }
+  });
+});
