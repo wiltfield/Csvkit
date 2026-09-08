@@ -24,10 +24,6 @@ let mode = 'grid';
 
 const history = createHistory();
 
-function updateHistoryButtons() {
-  if (undoBtn) undoBtn.disabled = !history.canUndo();
-  if (redoBtn) redoBtn.disabled = !history.canRedo();
-}
 
 const save = setupSaveButton({
   saveRow: document.getElementById('save-row'),
@@ -61,7 +57,6 @@ const grid = createEditableGrid(gridEl, {
     else if (action === 'remove-row-blocked') { term.error('No rows left to remove.'); return; }
     else if (action === 'remove-col-blocked') { term.error('Need at least one column.'); return; }
     history.push({ rows });
-    updateHistoryButtons();
   },
 });
 
@@ -119,7 +114,6 @@ function switchMode(newMode) {
     grid.render();
     showGridMode();
     history.push({ rows });
-    updateHistoryButtons();
   }
   mode = newMode;
   modeButtons.forEach((b) => b.classList.toggle('active', b.dataset.mode === newMode));
@@ -136,7 +130,6 @@ if (undoBtn) {
     const prev = history.undo();
     if (!prev) {
       term.error('Nothing to undo.');
-      updateHistoryButtons();
       return;
     }
     rows = prev.rows;
@@ -144,7 +137,6 @@ if (undoBtn) {
     save.show();
     term.say('Undid last change.');
     persist();
-    updateHistoryButtons();
   });
 }
 
@@ -153,7 +145,6 @@ if (redoBtn) {
     const next = history.redo();
     if (!next) {
       term.error('Nothing to redo.');
-      updateHistoryButtons();
       return;
     }
     rows = next.rows;
@@ -161,7 +152,6 @@ if (redoBtn) {
     save.show();
     term.say('Redid last change.');
     persist();
-    updateHistoryButtons();
   });
 }
 
@@ -176,7 +166,6 @@ newFileBtn.addEventListener('click', () => {
   modeButtons.forEach((b) => b.classList.toggle('active', b.dataset.mode === 'grid'));
   save.hide();
   history.reset({ rows });
-  updateHistoryButtons();
   term.say('Started a new file.');
 });
 
@@ -199,12 +188,10 @@ delimiterInput.addEventListener('input', persist);
     modeButtons.forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
     save.show();
     history.reset({ rows });
-    updateHistoryButtons();
     term.say('Restored your last session.');
   } else {
     grid.render();
     history.reset({ rows });
-    updateHistoryButtons();
     term.say('Start typing, or switch to Text mode to paste data.');
   }
 })();
