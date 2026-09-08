@@ -14,13 +14,18 @@ const browseBtn = document.getElementById('browse-tables-btn');
 const schemaPanel = document.getElementById('schema-panel');
 const insertConfirm = document.getElementById('insert-query-confirm');
 const insertLabel = document.getElementById('insert-query-label');
-const insertAppendBtn = document.getElementById('insert-query-append');
+const insertStackBtn = document.getElementById('insert-query-stack');
 const insertReplaceBtn = document.getElementById('insert-query-replace');
 const insertCancelBtn = document.getElementById('insert-query-cancel');
+const stackPanel = document.getElementById('stack-panel');
+const stackChipList = document.getElementById('stack-chip-list');
+const runStackBtn = document.getElementById('run-stack-btn');
+const clearStackBtn = document.getElementById('clear-stack-btn');
 
 let currentOutputRows = null;
 let dbConnected = false;
 let pendingTableName = null;
+let stackedTables = [];
 
 setupConnectionUI({
   connectBtn: document.getElementById('db-connect-btn'),
@@ -88,12 +93,90 @@ function closeInsertPopup() {
   pendingTableName = null;
 }
 
-insertAppendBtn.addEventListener('click', () => {
+function renderStackChips() {
+  if (stackedTables.length === 0) {
+    stackPanel.classList.add('hidden');
+    stackChipList.innerHTML = '';
+    return;
+  }
+  stackPanel.classList.remove('hidden');
+  stackChipList.innerHTML = stackedTables.map((name) => `
+    <span class="file-chip" data-table="${name}">
+      ${name}
+      <button class="remove-btn" type="button" data-remove="${name}">&times;</button>
+    </span>
+  `).join('');
+  stackChipList.querySelectorAll('[data-remove]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      stackedTables = stackedTables.filter((t) => t !== btn.dataset.remove);
+      renderStackChips();
+    });
+  });
+}
+
+insertStackBtn.addEventListener('click', () => {
   if (!pendingTableName) return;
-  const stmt = `SELECT * FROM ${pendingTableName};`;
-  queryInput.value = queryInput.value.trim() ? `${queryInput.value}\n${stmt}` : stmt;
-  persist();
+  if (!stackedTables.includes(pendingTableName)) {
+    stackedTables.push(pendingTableName);
+    renderStackChips();
+  }
+  term.say(`Added "${pendingTableName}" to the stack.`);
   closeInsertPopup();
+});
+
+runStackBtn.addEventListener('click', async () => {
+  if (stackedTables.length === 0) {
+    term.error('Stack is empty.');
+    return;
+  }
+  const connStr = getConnectionString();
+  if (!dbConnected || !connStr) {
+    term.error('Connect a database first.');
+    return;
+  }
+  runStackBtn.disabled = true;
+  term.say('Running stacked tables...');
+  const columnsOrder = [];
+  const seenCols = new Set();
+  const allRows = [];
+  for (const table of stackedTables) {
+    const result = await runQuery(connStr, `SELECT * FROM ${table};`);
+    if (!result.ok) {
+      runStackBtn.disabled = false;
+      term.error(`"${table}" failed: ${result.error || 'query failed.'}`);
+      return;
+    }
+    for (const row of result.rows) {
+      for (const col of Object.keys(row)) {
+        if (!seenCols.has(col)) {
+          seenCols.add(col);
+          columnsOrder.push(col);
+        }
+      }
+      allRows.push(row);
+    }
+  }
+  runStackBtn.disabled = false;
+  if (allRows.length === 0) {
+    outputArea.innerHTML = '<p class="lead">Stacked tables ran successfully but returned no rows.</p>';
+    currentOutputRows = null;
+    save.hide();
+    term.error('No rows returned.');
+    persist();
+    return;
+  }
+  const dataRows = allRows.map((r) => columnsOrder.map((c) => (r[c] ?? '')));
+  currentOutputRows = [columnsOrder, ...dataRows];
+  renderTable(currentOutputRows);
+  save.show();
+  term.say(`Stacked ${stackedTables.length} table${stackedTables.length === 1 ? '' : 's'} into ${allRows.length} row${allRows.length === 1 ? '' : 's'}.`);
+  persist();
+});
+
+clearStackBtn.addEventListener('click', () => {
+  stackedTables = [];
+  renderStackChips();
+  term.say('Stack cleared.');
 });
 
 insertReplaceBtn.addEventListener('click', () => {
