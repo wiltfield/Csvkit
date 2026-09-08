@@ -6,6 +6,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
+        about: resolve(__dirname, 'about.html'),
         csvclean: resolve(__dirname, 'csvclean.html'),
         csvcreate: resolve(__dirname, 'csvcreate.html'),
         csvcut: resolve(__dirname, 'csvcut.html'),
