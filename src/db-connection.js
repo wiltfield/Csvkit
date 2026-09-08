@@ -74,6 +74,32 @@ export async function runQuery(connStr, sql) {
   }
 }
 
+// Fetches the public schema's tables and columns via the relay's /query
+// endpoint. Returns { ok: true, tables: [{ name, columns: [{name, type}] }] }
+// or { ok: false, error }.
+export async function getSchema(connStr) {
+  const sql = `
+    SELECT table_name, column_name, data_type
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+    ORDER BY table_name, ordinal_position
+  `;
+  const result = await runQuery(connStr, sql);
+  if (!result.ok) return result;
+  const tables = [];
+  const byName = new Map();
+  for (const row of result.rows) {
+    const tName = row.table_name;
+    if (!byName.has(tName)) {
+      const entry = { name: tName, columns: [] };
+      byName.set(tName, entry);
+      tables.push(entry);
+    }
+    byName.get(tName).columns.push({ name: row.column_name, type: row.data_type });
+  }
+  return { ok: true, tables };
+}
+
 // Runs one or more CREATE TABLE / INSERT statements against the relay's
 // /insert endpoint. `statements` must be an array of statement strings
 // (the caller generates these directly, so there's no need to split SQL
