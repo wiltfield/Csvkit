@@ -5,8 +5,8 @@
 
 const STORAGE_KEY = 'csvkit-db-token';
 
-// Netlify relay base. Update if the relay is redeployed elsewhere.
-const RELAY_BASE = 'https://gorgeous-pavlova-cf0a77.netlify.app/.netlify/functions';
+// Relay base. Vercel serverless functions live under /api on the same domain.
+const RELAY_BASE = '/api';
 
 export function getConnectionString() {
   try {
