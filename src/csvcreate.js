@@ -2,6 +2,7 @@ import { createTerminal } from './terminal.js';
 import { setupSaveButton, rowsToCSV } from './download.js';
 import { saveDraft, loadDraft, clearDraft, debounce } from './draft-storage.js';
 import { createEditableGrid } from './editable-grid.js';
+import { createHistory } from './history.js';
 
 const DRAFT_KEY = 'csvcreate';
 
@@ -15,9 +16,18 @@ const addRowBtn = document.getElementById('add-row-btn');
 const addColBtn = document.getElementById('add-col-btn');
 const newFileBtn = document.getElementById('new-file-btn');
 const modeButtons = document.querySelectorAll('.mode-btn');
+const undoBtn = document.getElementById('undo-btn');
+const redoBtn = document.getElementById('redo-btn');
 
 let rows = [['Column 1']];
 let mode = 'grid';
+
+const history = createHistory();
+
+function updateHistoryButtons() {
+  if (undoBtn) undoBtn.disabled = !history.canUndo();
+  if (redoBtn) redoBtn.disabled = !history.canRedo();
+}
 
 const save = setupSaveButton({
   saveRow: document.getElementById('save-row'),
@@ -48,8 +58,10 @@ const grid = createEditableGrid(gridEl, {
     else if (action === 'add-col') term.say('Column added.');
     else if (action === 'remove-row') term.say('Row removed.');
     else if (action === 'remove-col') term.say('Column removed.');
-    else if (action === 'remove-row-blocked') term.error('No rows left to remove.');
-    else if (action === 'remove-col-blocked') term.error('Need at least one column.');
+    else if (action === 'remove-row-blocked') { term.error('No rows left to remove.'); return; }
+    else if (action === 'remove-col-blocked') { term.error('Need at least one column.'); return; }
+    history.push({ rows });
+    updateHistoryButtons();
   },
 });
 
@@ -106,6 +118,8 @@ function switchMode(newMode) {
     if (parsed.length) rows = parsed;
     grid.render();
     showGridMode();
+    history.push({ rows });
+    updateHistoryButtons();
   }
   mode = newMode;
   modeButtons.forEach((b) => b.classList.toggle('active', b.dataset.mode === newMode));
@@ -117,6 +131,40 @@ modeButtons.forEach((b) => b.addEventListener('click', () => switchMode(b.datase
 addRowBtn.addEventListener('click', () => grid.addRow());
 addColBtn.addEventListener('click', () => grid.addColumn());
 
+if (undoBtn) {
+  undoBtn.addEventListener('click', () => {
+    const prev = history.undo();
+    if (!prev) {
+      term.error('Nothing to undo.');
+      updateHistoryButtons();
+      return;
+    }
+    rows = prev.rows;
+    grid.render();
+    save.show();
+    term.say('Undid last change.');
+    persist();
+    updateHistoryButtons();
+  });
+}
+
+if (redoBtn) {
+  redoBtn.addEventListener('click', () => {
+    const next = history.redo();
+    if (!next) {
+      term.error('Nothing to redo.');
+      updateHistoryButtons();
+      return;
+    }
+    rows = next.rows;
+    grid.render();
+    save.show();
+    term.say('Redid last change.');
+    persist();
+    updateHistoryButtons();
+  });
+}
+
 newFileBtn.addEventListener('click', () => {
   clearDraft(DRAFT_KEY);
   rows = [['Column 1']];
@@ -127,6 +175,8 @@ newFileBtn.addEventListener('click', () => {
   showGridMode();
   modeButtons.forEach((b) => b.classList.toggle('active', b.dataset.mode === 'grid'));
   save.hide();
+  history.reset({ rows });
+  updateHistoryButtons();
   term.say('Started a new file.');
 });
 
@@ -148,9 +198,13 @@ delimiterInput.addEventListener('input', persist);
     }
     modeButtons.forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
     save.show();
+    history.reset({ rows });
+    updateHistoryButtons();
     term.say('Restored your last session.');
   } else {
     grid.render();
+    history.reset({ rows });
+    updateHistoryButtons();
     term.say('Start typing, or switch to Text mode to paste data.');
   }
 })();
