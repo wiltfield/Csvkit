@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Donate - csvkit+</title>
+<script>
+  (function () {
+    var saved = localStorage.getItem('theme');
+    document.documentElement.setAttribute('data-theme', saved === 'light' ? 'light' : 'dark');
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=VT323&display=block">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="stylesheet" href="src/style.css">
+<style>
+  /* ---------- donate page additions (reuses existing tokens/classes) ---------- */
+  .donate-warning {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    border: 1px solid #e85c5c;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: var(--text);
+    background: color-mix(in srgb, #e85c5c 10%, transparent);
+  }
+
+  .donate-warning strong {
+    color: #e85c5c;
+  }
+
+  .address-actions {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .address-value {
+    font-family: "IBM Plex Sans", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.9rem;
+    word-break: break-all;
+    background: color-mix(in srgb, var(--text) 6%, transparent);
+    border: 1px solid color-mix(in srgb, var(--text) 20%, transparent);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin: 0;
+  }
+
+  .network-tag {
+    display: inline-block;
+    font-family: "IBM Plex Serif", monospace;
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: var(--plus-accent);
+    border: 1px solid var(--plus-accent);
+    border-radius: 999px;
+    padding: 0.15rem 0.6rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .kofi-link {
+    display: inline-flex;
+    align-self: flex-start;
+    text-decoration: none;
+  }
+</style>
+</head>
+<body class="op-page">
+
+  <main class="wrap about-wrap">
+    <a class="back-link" href="index.html">&larr; Back</a>
+
+    <h1 class="about-title">Support csvkit<span class="plus">+</span></h1>
+
+    <div class="about-content">
+
+      <section class="about-section">
+        <h2>Why donate</h2>
+        <p>csvkit+ is completely free, no paid features, no locked tools. Donations are entirely optional and go toward keeping this project running, plus funding other projects that are currently on pause due to lack of funds. Every bit helps.</p>
+      </section>
+
+      <section class="about-section">
+        <h2>Ko-fi</h2>
+        <p>The quickest way to donate is through Ko-fi. Crypto options are also available below.</p>
+        <a class="kofi-link save-btn" href="https://ko-fi.com/wiltfield" target="_blank" rel="noopener noreferrer">Donate on Ko-fi</a>
+      </section>
+
+      <section class="about-section">
+        <span class="network-tag">Solana network</span>
+        <h2>USDT via Solana (SOL)</h2>
+        <p>Send USDT using the Solana network only.</p>
+
+        <div class="donate-warning">
+          <span aria-hidden="true">&#9888;</span>
+          <span><strong>Solana network only.</strong> Sending on any other network (Ethereum, TRC20, BSC, etc.) to this address will result in permanent loss of funds. Double check the network is set to Solana before sending.</span>
+        </div>
+
+        <div class="save-box visible" id="sol-box">
+          <button class="run-btn" type="button" id="sol-reveal">Show address</button>
+          <p class="address-value hidden" id="sol-address">GZyzJzcL341owBmG7NeKpa67hFKnaw7dNgJk5XhnedUi</p>
+          <div class="address-actions hidden" id="sol-actions">
+            <button class="save-btn" type="button" id="sol-copy" data-address="GZyzJzcL341owBmG7NeKpa67hFKnaw7dNgJk5XhnedUi">Copy address</button>
+            <button class="clear-btn" type="button" id="sol-hide">Hide</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="about-section">
+        <span class="network-tag">TRC20 network</span>
+        <h2>USDT via TRC20 (TRON)</h2>
+        <p>Send USDT using the TRC20 (TRON) network only.</p>
+
+        <div class="donate-warning">
+          <span aria-hidden="true">&#9888;</span>
+          <span><strong>TRC20 (TRON) network only.</strong> Sending on any other network (ERC20, Solana, BEP20, etc.) to this address will result in permanent loss of funds. Double check the network is set to TRC20 before sending.</span>
+        </div>
+
+        <div class="save-box visible" id="trc-box">
+          <button class="run-btn" type="button" id="trc-reveal">Show address</button>
+          <p class="address-value hidden" id="trc-address">TY1xsiEgEr31ZaTLCWDgdbYdQ2QskFQ2Y4</p>
+          <div class="address-actions hidden" id="trc-actions">
+            <button class="save-btn" type="button" id="trc-copy" data-address="TY1xsiEgEr31ZaTLCWDgdbYdQ2QskFQ2Y4">Copy address</button>
+            <button class="clear-btn" type="button" id="trc-hide">Hide</button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <button class="foot-link" type="button" data-action="about">About</button>
+    <button class="foot-link" type="button" data-action="donate">Donate</button>
+    <button class="foot-link theme-toggle" type="button" id="theme-toggle" aria-pressed="false">
+      Theme
+      <span class="switch" aria-hidden="true">
+        <span class="switch-track">
+          <span class="switch-lever"></span>
+        </span>
+      </span>
+    </button>
+  </footer>
+
+<script type="module" src="src/script.js"></script>
+<script>
+  (function () {
+    function setupReveal(prefix) {
+      var reveal = document.getElementById(prefix + '-reveal');
+      var address = document.getElementById(prefix + '-address');
+      var actions = document.getElementById(prefix + '-actions');
+      var hide = document.getElementById(prefix + '-hide');
+      var copy = document.getElementById(prefix + '-copy');
+
+      reveal.addEventListener('click', function () {
+        address.classList.remove('hidden');
+        actions.classList.remove('hidden');
+        reveal.classList.add('hidden');
+      });
+
+      hide.addEventListener('click', function () {
+        address.classList.add('hidden');
+        actions.classList.add('hidden');
+        reveal.classList.remove('hidden');
+      });
+
+      copy.addEventListener('click', function () {
+        var text = copy.getAttribute('data-address');
+        var originalLabel = 'Copy address';
+
+        function showCopied() {
+          copy.textContent = 'Copied!';
+          setTimeout(function () {
+            copy.textContent = originalLabel;
+          }, 1800);
+        }
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(showCopied).catch(function () {
+            fallbackCopy(text);
+            showCopied();
+          });
+        } else {
+          fallbackCopy(text);
+          showCopied();
+        }
+      });
+    }
+
+    function fallbackCopy(text) {
+      var temp = document.createElement('textarea');
+      temp.value = text;
+      temp.style.position = 'fixed';
+      temp.style.opacity = '0';
+      document.body.appendChild(temp);
+      temp.select();
+      try { document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(temp);
+    }
+
+    setupReveal('sol');
+    setupReveal('trc');
+  })();
+</script>
+</body>
+</html>
