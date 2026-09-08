@@ -1,6 +1,7 @@
 import { createTerminal } from './terminal.js';
 import { setupSaveButton } from './download.js';
 import { saveDraft, loadDraft, clearDraft, clearAllDrafts, debounce } from './draft-storage.js';
+import { createHistory } from './history.js';
 
 const DRAFT_KEY = 'csvsort';
 
@@ -12,8 +13,11 @@ const optionsPanel = document.getElementById('options-panel');
 const colSelect = document.getElementById('col-select');
 const runBtn = document.getElementById('run-btn');
 const clearBtn = document.getElementById('clear-btn');
+const undoBtn = document.getElementById('undo-btn');
+const redoBtn = document.getElementById('redo-btn');
 
 const worker = new Worker(new URL('./csv-worker.js', import.meta.url));
+const history = createHistory();
 
 let parsedRows = null;
 let currentOutputRows = null;
@@ -52,6 +56,29 @@ function currentDir() {
   return document.querySelector('input[name="dir"]:checked')?.value || 'asc';
 }
 
+function setDir(dir) {
+  const radio = document.querySelector(`input[name="dir"][value="${dir}"]`);
+  if (radio) radio.checked = true;
+}
+
+function updateHistoryButtons() {
+  if (undoBtn) undoBtn.disabled = !history.canUndo();
+  if (redoBtn) redoBtn.disabled = !history.canRedo();
+}
+
+function snapshot() {
+  return { parsedRows, currentOutputRows, colIndex: colSelect.value, dir: currentDir() };
+}
+
+function applyState(state) {
+  parsedRows = state.parsedRows;
+  currentOutputRows = state.currentOutputRows;
+  if (state.colIndex !== undefined) colSelect.value = state.colIndex;
+  if (state.dir) setDir(state.dir);
+  renderTable(currentOutputRows || parsedRows);
+  if (currentOutputRows) save.show(); else save.hide();
+}
+
 const persist = debounce(() => {
   if (!parsedRows) return;
   saveDraft(DRAFT_KEY, {
@@ -75,6 +102,8 @@ worker.onmessage = (e) => {
     renderTable(rows);
     term.say('File is ready. Pick a column and run.');
     save.hide();
+    history.reset(snapshot());
+    updateHistoryButtons();
     persist();
   } else {
     renderTable(rows);
@@ -83,6 +112,8 @@ worker.onmessage = (e) => {
       currentOutputRows = rows;
       save.show();
       term.say('Rows sorted.');
+      history.push(snapshot());
+      updateHistoryButtons();
       persist();
     } else {
       term.error('Rows are already in that order.');
@@ -107,6 +138,8 @@ function handleFile(file) {
   currentOutputRows = null;
   optionsPanel.classList.remove('visible');
   save.hide();
+  history.clear();
+  updateHistoryButtons();
   term.say('Uploading...');
   const reader = new FileReader();
 
@@ -132,6 +165,36 @@ runBtn.addEventListener('click', () => {
   term.say('Sorting...');
   worker.postMessage({ op: 'sort', rows: parsedRows, colIndex, dir });
 });
+
+if (undoBtn) {
+  undoBtn.addEventListener('click', () => {
+    const prev = history.undo();
+    if (!prev) {
+      term.error('Nothing to undo.');
+      updateHistoryButtons();
+      return;
+    }
+    applyState(prev);
+    term.say('Undid last change.');
+    persist();
+    updateHistoryButtons();
+  });
+}
+
+if (redoBtn) {
+  redoBtn.addEventListener('click', () => {
+    const next = history.redo();
+    if (!next) {
+      term.error('Nothing to redo.');
+      updateHistoryButtons();
+      return;
+    }
+    applyState(next);
+    term.say('Redid last change.');
+    persist();
+    updateHistoryButtons();
+  });
+}
 
 colSelect.addEventListener('change', persist);
 document.querySelectorAll('input[name="dir"]').forEach((r) => r.addEventListener('change', persist));
@@ -161,6 +224,8 @@ clearBtn.addEventListener('click', () => {
   optionsPanel.classList.remove('visible');
   outputArea.innerHTML = '';
   save.hide();
+  history.clear();
+  updateHistoryButtons();
   term.say('File cleared from storage.');
 });
 
@@ -173,18 +238,18 @@ clearBtn.addEventListener('click', () => {
     buildColSelect(parsedRows[0] || []);
     optionsPanel.classList.add('visible');
     if (draft.colIndex !== undefined) colSelect.value = draft.colIndex;
-    if (draft.dir) {
-      const radio = document.querySelector(`input[name="dir"][value="${draft.dir}"]`);
-      if (radio) radio.checked = true;
-    }
+    if (draft.dir) setDir(draft.dir);
     const rowsToShow = draft.currentOutputRows || parsedRows;
     renderTable(rowsToShow);
     if (draft.currentOutputRows) {
       currentOutputRows = draft.currentOutputRows;
       save.show();
     }
+    history.reset(snapshot());
+    updateHistoryButtons();
     term.say('Restored your last session.');
   } else {
     term.say('Upload your file.');
+    updateHistoryButtons();
   }
 })();
