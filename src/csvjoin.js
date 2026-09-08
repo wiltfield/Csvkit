@@ -1,6 +1,7 @@
 import { createTerminal } from './terminal.js';
 import { setupSaveButton } from './download.js';
 import { saveDraft, loadDraft, clearDraft, clearAllDrafts, debounce } from './draft-storage.js';
+import { createHistory } from './history.js';
 
 const DRAFT_KEY = 'csvjoin';
 
@@ -16,15 +17,19 @@ const fileInputLeft = document.getElementById('file-input-left');
 const dropZoneRight = document.getElementById('drop-zone-right');
 const fileInputRight = document.getElementById('file-input-right');
 const clearBtn = document.getElementById('clear-btn');
+const undoBtn = document.getElementById('undo-btn');
+const redoBtn = document.getElementById('redo-btn');
 
 term.say('Upload both files.');
 
 const worker = new Worker(new URL('./csv-worker.js', import.meta.url));
+const history = createHistory();
 
 let leftRows = null;
 let rightRows = null;
 let currentOutputRows = null;
 let lastJoinSerialized = null;
+let historyStarted = false;
 
 const save = setupSaveButton({
   saveRow: document.getElementById('save-row'),
@@ -72,10 +77,43 @@ function buildColSelect(select, header, selectedValue) {
   if (selectedValue !== undefined) select.value = selectedValue;
 }
 
+function updateHistoryButtons() {
+  if (undoBtn) undoBtn.disabled = !history.canUndo();
+  if (redoBtn) redoBtn.disabled = !history.canRedo();
+}
+
+function snapshot() {
+  return {
+    currentOutputRows,
+    lastJoinSerialized,
+    leftCol: colSelectLeft.value,
+    rightCol: colSelectRight.value,
+  };
+}
+
+function applyState(state) {
+  currentOutputRows = state.currentOutputRows;
+  lastJoinSerialized = state.lastJoinSerialized;
+  if (state.leftCol !== undefined) colSelectLeft.value = state.leftCol;
+  if (state.rightCol !== undefined) colSelectRight.value = state.rightCol;
+  if (currentOutputRows) {
+    renderTable(currentOutputRows);
+    save.show();
+  } else {
+    outputArea.innerHTML = '';
+    save.hide();
+  }
+}
+
 function maybeShowOptions() {
   if (leftRows && rightRows) {
     optionsPanel.classList.add('visible');
     term.say('Both files loaded. Pick join columns and run.');
+    if (!historyStarted) {
+      historyStarted = true;
+      history.reset(snapshot());
+      updateHistoryButtons();
+    }
   }
 }
 
@@ -113,6 +151,8 @@ worker.onmessage = (e) => {
     currentOutputRows = rows;
     save.show();
     term.say(`Joined ${rows.length - 1} row(s).`);
+    history.push(snapshot());
+    updateHistoryButtons();
     persist();
   }
 };
@@ -135,6 +175,9 @@ function handleFile(file, side) {
   optionsPanel.classList.remove('visible');
   save.hide();
   lastJoinSerialized = null;
+  historyStarted = false;
+  history.clear();
+  updateHistoryButtons();
   term.say(`Uploading ${side} file...`);
   const reader = new FileReader();
 
@@ -156,6 +199,36 @@ runBtn.addEventListener('click', () => {
   term.say('Joining...');
   worker.postMessage({ op: 'join', leftRows, rightRows, leftCol, rightCol });
 });
+
+if (undoBtn) {
+  undoBtn.addEventListener('click', () => {
+    const prev = history.undo();
+    if (!prev) {
+      term.error('Nothing to undo.');
+      updateHistoryButtons();
+      return;
+    }
+    applyState(prev);
+    term.say('Undid last change.');
+    persist();
+    updateHistoryButtons();
+  });
+}
+
+if (redoBtn) {
+  redoBtn.addEventListener('click', () => {
+    const next = history.redo();
+    if (!next) {
+      term.error('Nothing to redo.');
+      updateHistoryButtons();
+      return;
+    }
+    applyState(next);
+    term.say('Redid last change.');
+    persist();
+    updateHistoryButtons();
+  });
+}
 
 colSelectLeft.addEventListener('change', persist);
 colSelectRight.addEventListener('change', persist);
@@ -191,6 +264,9 @@ clearBtn.addEventListener('click', () => {
   optionsPanel.classList.remove('visible');
   outputArea.innerHTML = '';
   save.hide();
+  historyStarted = false;
+  history.clear();
+  updateHistoryButtons();
   term.say('File cleared from storage.');
 });
 
@@ -208,8 +284,12 @@ clearBtn.addEventListener('click', () => {
       renderTable(currentOutputRows);
       save.show();
     }
+    historyStarted = true;
+    history.reset(snapshot());
+    updateHistoryButtons();
     term.say('Restored your last session.');
   } else {
     term.say('Upload both files.');
+    updateHistoryButtons();
   }
 })();
