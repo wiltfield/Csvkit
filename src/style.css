@@ -751,3 +751,46 @@ body {
   flex-direction: column;
   gap: 0.7rem;
 }
+
+/* ---------- about page ---------- */
+.about-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.about-title {
+  font-family: "IBM Plex Serif", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 0;
+}
+
+.about-title .plus {
+  color: var(--plus-accent);
+}
+
+.about-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.about-section h2 {
+  font-family: "IBM Plex Serif", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 500;
+  font-size: 1.4rem;
+  color: var(--text);
+  margin: 0 0 0.5rem;
+}
+
+.about-section p {
+  font-family: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-weight: 500;
+  font-size: 1rem;
+  line-height: 1.2;
+  max-width: 65ch;
+  color: var(--text);
+  margin: 0;
+}
