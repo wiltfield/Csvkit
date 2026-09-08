@@ -1,6 +1,7 @@
 import { createTerminal } from './terminal.js';
 import { setupSaveButton } from './download.js';
 import { saveDraft, loadDraft, clearDraft, clearAllDrafts, debounce } from './draft-storage.js';
+import { createHistory } from './history.js';
 
 const DRAFT_KEY = 'csvcut';
 
@@ -12,8 +13,11 @@ const optionsPanel = document.getElementById('options-panel');
 const colPicker = document.getElementById('col-picker');
 const runBtn = document.getElementById('run-btn');
 const clearBtn = document.getElementById('clear-btn');
+const undoBtn = document.getElementById('undo-btn');
+const redoBtn = document.getElementById('redo-btn');
 
 const worker = new Worker(new URL('./csv-worker.js', import.meta.url));
+const history = createHistory();
 
 let parsedRows = null;
 let selectedOrder = []; // indices in click order
@@ -48,6 +52,26 @@ function renderTable(rows) {
     .map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join('')}</tr>`)
     .join('');
   outputArea.innerHTML = `<table class="output-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+}
+
+function updateHistoryButtons() {
+  if (undoBtn) undoBtn.disabled = !history.canUndo();
+  if (redoBtn) redoBtn.disabled = !history.canRedo();
+}
+
+function snapshot() {
+  return { currentOutputRows, selectedOrder: [...selectedOrder], lastApplied };
+}
+
+function applyState(state) {
+  currentOutputRows = state.currentOutputRows;
+  lastApplied = state.lastApplied;
+  selectedOrder = [...state.selectedOrder];
+  colPicker.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+    cb.checked = selectedOrder.includes(Number(cb.value));
+  });
+  renderTable(currentOutputRows || parsedRows);
+  if (currentOutputRows) save.show(); else save.hide();
 }
 
 const persist = debounce(() => {
@@ -92,6 +116,8 @@ worker.onmessage = (e) => {
     renderTable(rows);
     term.say('File is ready. Pick columns and run.');
     save.hide();
+    history.reset(snapshot());
+    updateHistoryButtons();
     persist();
   } else {
     renderTable(rows);
@@ -100,6 +126,8 @@ worker.onmessage = (e) => {
       currentOutputRows = rows;
       save.show();
       term.say('Columns cut.');
+      history.push(snapshot());
+      updateHistoryButtons();
     } else {
       term.error('No columns were removed or reordered.');
     }
@@ -125,6 +153,8 @@ function handleFile(file) {
   lastApplied = null;
   optionsPanel.classList.remove('visible');
   save.hide();
+  history.clear();
+  updateHistoryButtons();
   term.say('Uploading...');
   const reader = new FileReader();
 
@@ -161,6 +191,36 @@ runBtn.addEventListener('click', () => {
   worker.postMessage({ op: 'cut', rows: parsedRows, indices: selectedOrder });
 });
 
+if (undoBtn) {
+  undoBtn.addEventListener('click', () => {
+    const prev = history.undo();
+    if (!prev) {
+      term.error('Nothing to undo.');
+      updateHistoryButtons();
+      return;
+    }
+    applyState(prev);
+    term.say('Undid last change.');
+    persist();
+    updateHistoryButtons();
+  });
+}
+
+if (redoBtn) {
+  redoBtn.addEventListener('click', () => {
+    const next = history.redo();
+    if (!next) {
+      term.error('Nothing to redo.');
+      updateHistoryButtons();
+      return;
+    }
+    applyState(next);
+    term.say('Redid last change.');
+    persist();
+    updateHistoryButtons();
+  });
+}
+
 dropZone.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
 
@@ -189,6 +249,8 @@ clearBtn.addEventListener('click', () => {
   optionsPanel.classList.remove('visible');
   outputArea.innerHTML = '';
   save.hide();
+  history.clear();
+  updateHistoryButtons();
   term.say('File cleared from storage.');
 });
 
@@ -205,8 +267,11 @@ clearBtn.addEventListener('click', () => {
       currentOutputRows = draft.currentOutputRows;
       save.show();
     }
+    history.reset(snapshot());
+    updateHistoryButtons();
     term.say('Restored your last session.');
   } else {
     term.say('Upload your file.');
+    updateHistoryButtons();
   }
 })();
