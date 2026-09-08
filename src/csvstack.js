@@ -1,6 +1,7 @@
 import { createTerminal } from './terminal.js';
 import { setupSaveButton } from './download.js';
 import { saveDraft, loadDraft, clearDraft, clearAllDrafts, debounce } from './draft-storage.js';
+import { createHistory } from './history.js';
 
 const DRAFT_KEY = 'csvstack';
 
@@ -12,8 +13,11 @@ const optionsPanel = document.getElementById('options-panel');
 const runBtn = document.getElementById('run-btn');
 const chipList = document.getElementById('file-chip-list');
 const clearBtn = document.getElementById('clear-btn');
+const undoBtn = document.getElementById('undo-btn');
+const redoBtn = document.getElementById('redo-btn');
 
 const worker = new Worker(new URL('./csv-worker.js', import.meta.url));
+const history = createHistory();
 
 // Ordered list of { id, name, rows } for every file successfully parsed.
 let files = [];
@@ -76,6 +80,8 @@ function renderChips() {
       files = files.filter((f) => f.id !== id);
       renderChips();
       updateOptionsVisibility();
+      history.push(snapshot());
+      updateHistoryButtons();
       persist();
     });
   });
@@ -87,6 +93,34 @@ function updateOptionsVisibility() {
     term.say(`${files.length} files ready. Stack when you\u2019re set.`);
   } else {
     optionsPanel.classList.remove('visible');
+  }
+}
+
+function updateHistoryButtons() {
+  if (undoBtn) undoBtn.disabled = !history.canUndo();
+  if (redoBtn) redoBtn.disabled = !history.canRedo();
+}
+
+function snapshot() {
+  return {
+    files: files.map((f) => ({ id: f.id, name: f.name, rows: f.rows })),
+    currentOutputRows,
+    lastStackSerialized,
+  };
+}
+
+function applyState(state) {
+  files = state.files.map((f) => ({ ...f }));
+  renderChips();
+  updateOptionsVisibility();
+  currentOutputRows = state.currentOutputRows;
+  lastStackSerialized = state.lastStackSerialized;
+  if (currentOutputRows) {
+    renderTable(currentOutputRows);
+    save.show();
+  } else {
+    outputArea.innerHTML = '';
+    save.hide();
   }
 }
 
@@ -107,6 +141,8 @@ worker.onmessage = (e) => {
     const entry = files.find((f) => f.id === Number(slot.split(':')[1]));
     if (entry) entry.rows = rows;
     updateOptionsVisibility();
+    history.push(snapshot());
+    updateHistoryButtons();
     persist();
     return;
   }
@@ -121,6 +157,8 @@ worker.onmessage = (e) => {
     currentOutputRows = rows;
     save.show();
     term.say(`Stacked into ${rows.length - 1} row(s).`);
+    history.push(snapshot());
+    updateHistoryButtons();
     persist();
   }
 };
@@ -132,6 +170,10 @@ function addFile(file) {
   if (!file.name.toLowerCase().endsWith('.csv')) {
     term.error('That file is not a CSV.');
     return;
+  }
+  if (files.length === 0) {
+    history.reset({ files: [], currentOutputRows: null, lastStackSerialized: null });
+    updateHistoryButtons();
   }
   const id = nextId++;
   files.push({ id, name: file.name, rows: null });
@@ -159,6 +201,36 @@ runBtn.addEventListener('click', () => {
   term.say('Stacking...');
   worker.postMessage({ op: 'stack', filesRows: ready.map((f) => f.rows) });
 });
+
+if (undoBtn) {
+  undoBtn.addEventListener('click', () => {
+    const prev = history.undo();
+    if (!prev) {
+      term.error('Nothing to undo.');
+      updateHistoryButtons();
+      return;
+    }
+    applyState(prev);
+    term.say('Undid last change.');
+    persist();
+    updateHistoryButtons();
+  });
+}
+
+if (redoBtn) {
+  redoBtn.addEventListener('click', () => {
+    const next = history.redo();
+    if (!next) {
+      term.error('Nothing to redo.');
+      updateHistoryButtons();
+      return;
+    }
+    applyState(next);
+    term.say('Redid last change.');
+    persist();
+    updateHistoryButtons();
+  });
+}
 
 dropZone.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', () => {
@@ -191,6 +263,8 @@ clearBtn.addEventListener('click', () => {
   updateOptionsVisibility();
   outputArea.innerHTML = '';
   save.hide();
+  history.clear();
+  updateHistoryButtons();
   term.say('File cleared from storage.');
 });
 
@@ -207,8 +281,11 @@ clearBtn.addEventListener('click', () => {
       renderTable(currentOutputRows);
       save.show();
     }
+    history.reset(snapshot());
+    updateHistoryButtons();
     term.say('Restored your last session.');
   } else {
     term.say('Add two or more files.');
+    updateHistoryButtons();
   }
 })();
