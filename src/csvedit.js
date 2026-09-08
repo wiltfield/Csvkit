@@ -38,10 +38,6 @@ const persist = debounce(() => {
   saveDraft(DRAFT_KEY, { rows });
 });
 
-function updateHistoryButtons() {
-  if (undoBtn) undoBtn.disabled = !history.canUndo();
-  if (redoBtn) redoBtn.disabled = !history.canRedo();
-}
 
 const grid = createEditableGrid(gridEl, {
   getRows: () => rows,
@@ -55,7 +51,6 @@ const grid = createEditableGrid(gridEl, {
     else if (action === 'remove-row-blocked') { term.error('No rows left to remove.'); return; }
     else if (action === 'remove-col-blocked') { term.error('Need at least one column.'); return; }
     history.push({ rows });
-    updateHistoryButtons();
   },
 });
 
@@ -71,7 +66,6 @@ worker.onmessage = (e) => {
   term.say('File is ready. Edit cells, or add/remove rows and columns.');
   save.hide();
   history.reset({ rows });
-  updateHistoryButtons();
   persist();
 };
 
@@ -92,7 +86,6 @@ function handleFile(file) {
   optionsPanel.classList.remove('visible');
   save.hide();
   history.clear();
-  updateHistoryButtons();
   term.say('Uploading...');
   const reader = new FileReader();
 
@@ -119,7 +112,6 @@ if (undoBtn) {
     const prev = history.undo();
     if (!prev) {
       term.error('Nothing to undo.');
-      updateHistoryButtons();
       return;
     }
     rows = prev.rows;
@@ -127,7 +119,6 @@ if (undoBtn) {
     save.show();
     term.say('Undid last change.');
     persist();
-    updateHistoryButtons();
   });
 }
 
@@ -136,7 +127,6 @@ if (redoBtn) {
     const next = history.redo();
     if (!next) {
       term.error('Nothing to redo.');
-      updateHistoryButtons();
       return;
     }
     rows = next.rows;
@@ -144,7 +134,6 @@ if (redoBtn) {
     save.show();
     term.say('Redid last change.');
     persist();
-    updateHistoryButtons();
   });
 }
 
@@ -173,7 +162,6 @@ clearBtn.addEventListener('click', () => {
   gridEl.innerHTML = '';
   save.hide();
   history.clear();
-  updateHistoryButtons();
   term.say('File cleared from storage.');
 });
 
@@ -185,10 +173,8 @@ clearBtn.addEventListener('click', () => {
     grid.render();
     save.show();
     history.reset({ rows });
-    updateHistoryButtons();
     term.say('Restored your last session.');
   } else {
     term.say('Upload your file.');
-    updateHistoryButtons();
   }
 })();
