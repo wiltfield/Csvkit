@@ -280,7 +280,7 @@ body {
   border: 1px solid var(--btn-text);
   border-radius: 8px;
   padding: 0.55rem 1.2rem;
-  font-family: "IBM Plex Serif", monospace;
+  font-family: "IBM Plex Sans", sans-serif;
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
@@ -290,6 +290,16 @@ body {
 .run-btn:hover {
   color: var(--btn-text-hover);
   border-color: var(--btn-text-hover);
+}
+
+.run-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.run-btn:disabled:hover {
+  color: var(--btn-text);
+  border-color: var(--btn-text);
 }
 
 .options-panel .section-block {
@@ -378,7 +388,7 @@ body {
   border: 1px solid var(--text);
   border-radius: 8px;
   padding: 0.55rem 1.2rem;
-  font-family: "IBM Plex Serif", monospace;
+  font-family: "IBM Plex Sans", sans-serif;
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
@@ -387,6 +397,15 @@ body {
 
 .clear-btn:hover {
   opacity: 0.7;
+}
+
+.clear-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.clear-btn:disabled:hover {
+  opacity: 0.35;
 }
 
 /* ---------- save (download) ---------- */
@@ -404,7 +423,7 @@ body {
   border: 1px solid var(--save-btn-text);
   border-radius: 8px;
   padding: 0.55rem 1.2rem;
-  font-family: "IBM Plex Serif", monospace;
+  font-family: "IBM Plex Sans", sans-serif;
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
@@ -507,7 +526,7 @@ body {
   border: 1px solid color-mix(in srgb, var(--text) 30%, transparent);
   border-radius: 8px;
   padding: 0.45rem 1rem;
-  font-family: "IBM Plex Serif", monospace;
+  font-family: "IBM Plex Sans", sans-serif;
   font-weight: 600;
   font-size: 0.85rem;
   cursor: pointer;
