@@ -20,6 +20,7 @@ export default defineConfig({
         csvsql: resolve(__dirname, 'csvsql.html'),
         csvstack: resolve(__dirname, 'csvstack.html'),
         csvstat: resolve(__dirname, 'csvstat.html'),
+        donate: resolve(__dirname, 'donate.html'),
         in2csv: resolve(__dirname, 'in2csv.html'),
         sql2csv: resolve(__dirname, 'sql2csv.html'),
       },
