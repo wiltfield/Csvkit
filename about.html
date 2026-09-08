@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About - csvkit+</title>
+<script>
+  (function () {
+    var saved = localStorage.getItem('theme');
+    document.documentElement.setAttribute('data-theme', saved === 'light' ? 'light' : 'dark');
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=VT323&display=block">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="stylesheet" href="src/style.css">
+</head>
+<body class="op-page">
+
+  <main class="wrap about-wrap">
+    <a class="back-link" href="index.html">&larr; Back</a>
+
+    <h1 class="about-title">About csvkit<span class="plus">+</span></h1>
+
+    <div class="about-content">
+
+      <section class="about-section">
+        <h2>What is csvkit+</h2>
+        <p>csvkit+ is a browser-based tool for working with CSV and other tabular data. It brings the useful parts of csvkit into a graphical interface, plus tools that don't exist in the original project. Everything is free to use.</p>
+      </section>
+
+      <section class="about-section">
+        <h2>CSV tools</h2>
+        <p>Browser versions of: in2csv, csvclean, csvcut, csvformat, csvgrep, csvjoin, csvjson, csvlook, csvsort, csvsql, csvstack, csvstat. Each is its own page instead of a command line program.</p>
+      </section>
+
+      <section class="about-section">
+        <h2>csvedit</h2>
+        <p>Edit cells, column names, rows and columns directly in a table. Undo and redo included.</p>
+      </section>
+
+      <section class="about-section">
+        <h2>csvcreate</h2>
+        <p>Build a CSV from scratch, grid or text mode, custom delimiters.</p>
+      </section>
+
+      <section class="about-section">
+        <h2>File conversion (in2csv)</h2>
+        <p>Converts CSV, TSV, JSON, NDJSON, GeoJSON, XLS, XLSX, ODS, DBF, and fixed width text into CSV. ODS support is a csvkit+ addition, not in the original csvkit.</p>
+      </section>
+
+      <section class="about-section">
+        <h2>What's different from csvkit</h2>
+        <p>Runs entirely in the browser, no install needed. Adds a GUI, csvedit, csvcreate, drag and drop, undo and redo, autosaved drafts, light and dark themes, ODS support.</p>
+      </section>
+
+      <section class="about-section">
+        <h2>Drafts</h2>
+        <p>Work is autosaved locally in your browser so a refresh or accidental close doesn't lose it.</p>
+      </section>
+
+      <section class="about-section">
+        <h2>Privacy</h2>
+        <p>Processing happens in the browser where possible. Files aren't uploaded just because you're using the tool. Still don't put sensitive data into any online service without understanding what it does.</p>
+      </section>
+
+      <section class="about-section">
+        <h2>Free to use</h2>
+        <p>No paid features. Donations are optional and help fund development.</p>
+      </section>
+
+      <section class="about-section">
+        <h2>Status</h2>
+        <p>Active project, more features coming.</p>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <button class="foot-link" type="button" data-action="about">About</button>
+    <button class="foot-link" type="button" data-action="donate">Donate</button>
+    <button class="foot-link theme-toggle" type="button" id="theme-toggle" aria-pressed="false">
+      Theme
+      <span class="switch" aria-hidden="true">
+        <span class="switch-track">
+          <span class="switch-lever"></span>
+        </span>
+      </span>
+    </button>
+  </footer>
+
+<script type="module" src="src/script.js"></script>
+</body>
+</html>
