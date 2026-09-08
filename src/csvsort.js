@@ -61,10 +61,6 @@ function setDir(dir) {
   if (radio) radio.checked = true;
 }
 
-function updateHistoryButtons() {
-  if (undoBtn) undoBtn.disabled = !history.canUndo();
-  if (redoBtn) redoBtn.disabled = !history.canRedo();
-}
 
 function snapshot() {
   return { parsedRows, currentOutputRows, colIndex: colSelect.value, dir: currentDir() };
@@ -103,7 +99,6 @@ worker.onmessage = (e) => {
     term.say('File is ready. Pick a column and run.');
     save.hide();
     history.reset(snapshot());
-    updateHistoryButtons();
     persist();
   } else {
     renderTable(rows);
@@ -113,7 +108,6 @@ worker.onmessage = (e) => {
       save.show();
       term.say('Rows sorted.');
       history.push(snapshot());
-      updateHistoryButtons();
       persist();
     } else {
       term.error('Rows are already in that order.');
@@ -139,7 +133,6 @@ function handleFile(file) {
   optionsPanel.classList.remove('visible');
   save.hide();
   history.clear();
-  updateHistoryButtons();
   term.say('Uploading...');
   const reader = new FileReader();
 
@@ -171,13 +164,11 @@ if (undoBtn) {
     const prev = history.undo();
     if (!prev) {
       term.error('Nothing to undo.');
-      updateHistoryButtons();
       return;
     }
     applyState(prev);
     term.say('Undid last change.');
     persist();
-    updateHistoryButtons();
   });
 }
 
@@ -186,13 +177,11 @@ if (redoBtn) {
     const next = history.redo();
     if (!next) {
       term.error('Nothing to redo.');
-      updateHistoryButtons();
       return;
     }
     applyState(next);
     term.say('Redid last change.');
     persist();
-    updateHistoryButtons();
   });
 }
 
@@ -225,7 +214,6 @@ clearBtn.addEventListener('click', () => {
   outputArea.innerHTML = '';
   save.hide();
   history.clear();
-  updateHistoryButtons();
   term.say('File cleared from storage.');
 });
 
@@ -246,10 +234,8 @@ clearBtn.addEventListener('click', () => {
       save.show();
     }
     history.reset(snapshot());
-    updateHistoryButtons();
     term.say('Restored your last session.');
   } else {
     term.say('Upload your file.');
-    updateHistoryButtons();
   }
 })();
