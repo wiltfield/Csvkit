@@ -745,3 +745,9 @@ body {
 .insert-confirm {
   /* reuses .save-box's hidden-by-default/.visible pattern */
 }
+
+.stack-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
