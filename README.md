@@ -85,13 +85,11 @@ Supported input formats include:
 
 Fixed-width files can be converted using a column schema.
 
-ODS support is one of the additions made in Csvkit+. The original csvkit `in2csv` supports formats including DBF, fixed-width, GeoJSON, JSON, NDJSON, XLS and XLSX, but does not list ODS as a supported input format. ([csvkit.readthedocs.io](https://csvkit.readthedocs.io/_/downloads/en/1.0.2/pdf/?utm_source=chatgpt.com))
+ODS support is one of the additions made in Csvkit+. The original csvkit `in2csv` does not list ODS as a supported input format.
 
 ## What is different from csvkit?
 
-Csvkit+ started from the functionality provided by csvkit, but it is not a wrapper around the original csvkit program.
-
-Csvkit+ is implemented in JavaScript and runs in the browser.
+Csvkit+ is not a wrapper around the original csvkit program and does not call, embed, or depend on it in any way. It is an independent JavaScript codebase that reimplements the same category of functionality from scratch so it can run entirely in the browser, with no Python installation or server-side csvkit process involved.
 
 The following are additions made specifically for Csvkit+:
 
@@ -109,8 +107,6 @@ The following are additions made specifically for Csvkit+:
 - **Grid and text editing modes in csvcreate**
 - **Custom delimiter support in csvcreate**
 - **Client-side processing for supported operations**
-
-The original csvkit is a collection of command-line utilities for working with tabular data. Csvkit+ is intended to make similar functionality available through a browser while also providing tools that are not part of csvkit. ([csvkit.readthedocs.io](https://csvkit.readthedocs.io/_/downloads/en/1.0.0/pdf/?utm_source=chatgpt.com))
 
 ## Working with files
 
@@ -139,29 +135,6 @@ The selected theme is saved locally so it can be retained between visits.
 Csvkit+ is designed to run in a modern web browser with JavaScript enabled.
 
 No Python installation or separate csvkit installation is required to use the web application.
-
-## Running locally
-
-Clone the repository:
-
-```bash
-git clone https://github.com/wiltfield/Csvkit-plus.git
-cd Csvkit-plus
-```
-
-Install the dependencies:
-
-```bash
-npm install
-```
-
-Start the development server:
-
-```bash
-npm run dev
-```
-
-The application can then be opened at the local address provided by Vite.
 
 ## Project structure
 
@@ -211,21 +184,22 @@ Donations help cover development costs and help fund other projects that are cur
 
 ## License
 
-Csvkit+ is proprietary software and is not open source.
+**Csvkit+ is proprietary software. It is not open source.**
 
-The source code is publicly visible on GitHub for transparency and reference, but public availability of the repository does not grant permission to copy, modify, redistribute, sell, or create derivative versions of the software.
+- All rights are reserved. No permission is granted to copy, modify, redistribute, sell, sublicense, or create derivative works from this software, in whole or in part, unless explicitly stated otherwise in writing by the project owner.
+- The source code is publicly visible on GitHub for transparency and reference only. Public visibility of the repository does not constitute an open-source license and does not grant any usage rights.
+- There is no license file in this repository granting rights to third parties. Absence of a license means no rights are granted beyond viewing the code.
+- Cloning or downloading this repository does not grant any right to run, build, modify, or redistribute the software.
 
-All rights are reserved unless explicitly stated otherwise.
-
-Csvkit+ is an independent project and is not the csvkit project itself.
+Csvkit+ is an independent project and is not the csvkit project itself, not affiliated with it, and not endorsed by it.
 
 ## Acknowledgements
 
-Csvkit+ is based on the functionality and ideas provided by the csvkit project.
+Csvkit+ is based on the functionality and ideas provided by the [csvkit](https://github.com/wireservice/csvkit) project, an open source Python toolkit for working with CSV and tabular data. csvkit's command-line utilities provided the conceptual foundation for the set of operations implemented in Csvkit+.
 
-csvkit is an open source Python toolkit for working with CSV and tabular data. Its command-line utilities provided the foundation for the set of operations implemented in Csvkit+. ([csvkit.readthedocs.io](https://csvkit.readthedocs.io/_/downloads/en/1.0.0/pdf/?utm_source=chatgpt.com))
+Csvkit+ does not reuse csvkit's source code. All functionality is reimplemented independently in JavaScript for the browser.
 
-For the original project and its documentation, see the [csvkit repository](https://github.com/wireservice/csvkit) and [csvkit documentation](https://csvkit.readthedocs.io/).
+See the [csvkit repository](https://github.com/wireservice/csvkit) and [csvkit documentation](https://csvkit.readthedocs.io/) for the original project.
 
 ## Status
 
