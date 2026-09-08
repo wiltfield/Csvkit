@@ -2,6 +2,7 @@ import { createTerminal } from './terminal.js';
 import { setupSaveButton } from './download.js';
 import { saveDraft, loadDraft, clearDraft, clearAllDrafts, debounce } from './draft-storage.js';
 import { createEditableGrid } from './editable-grid.js';
+import { createHistory } from './history.js';
 
 const DRAFT_KEY = 'csvedit';
 
@@ -13,8 +14,11 @@ const gridEl = document.getElementById('grid');
 const addRowBtn = document.getElementById('add-row-btn');
 const addColBtn = document.getElementById('add-col-btn');
 const clearBtn = document.getElementById('clear-btn');
+const undoBtn = document.getElementById('undo-btn');
+const redoBtn = document.getElementById('redo-btn');
 
 const worker = new Worker(new URL('./csv-worker.js', import.meta.url));
+const history = createHistory();
 
 let rows = null;
 
@@ -34,6 +38,11 @@ const persist = debounce(() => {
   saveDraft(DRAFT_KEY, { rows });
 });
 
+function updateHistoryButtons() {
+  if (undoBtn) undoBtn.disabled = !history.canUndo();
+  if (redoBtn) redoBtn.disabled = !history.canRedo();
+}
+
 const grid = createEditableGrid(gridEl, {
   getRows: () => rows,
   onChange: (action) => {
@@ -43,8 +52,10 @@ const grid = createEditableGrid(gridEl, {
     else if (action === 'add-col') term.say('Column added.');
     else if (action === 'remove-row') term.say('Row removed.');
     else if (action === 'remove-col') term.say('Column removed.');
-    else if (action === 'remove-row-blocked') term.error('No rows left to remove.');
-    else if (action === 'remove-col-blocked') term.error('Need at least one column.');
+    else if (action === 'remove-row-blocked') { term.error('No rows left to remove.'); return; }
+    else if (action === 'remove-col-blocked') { term.error('Need at least one column.'); return; }
+    history.push({ rows });
+    updateHistoryButtons();
   },
 });
 
@@ -59,6 +70,8 @@ worker.onmessage = (e) => {
   grid.render();
   term.say('File is ready. Edit cells, or add/remove rows and columns.');
   save.hide();
+  history.reset({ rows });
+  updateHistoryButtons();
   persist();
 };
 
@@ -78,6 +91,8 @@ function handleFile(file) {
   rows = null;
   optionsPanel.classList.remove('visible');
   save.hide();
+  history.clear();
+  updateHistoryButtons();
   term.say('Uploading...');
   const reader = new FileReader();
 
@@ -98,6 +113,40 @@ function handleFile(file) {
 
 addRowBtn.addEventListener('click', () => grid.addRow());
 addColBtn.addEventListener('click', () => grid.addColumn());
+
+if (undoBtn) {
+  undoBtn.addEventListener('click', () => {
+    const prev = history.undo();
+    if (!prev) {
+      term.error('Nothing to undo.');
+      updateHistoryButtons();
+      return;
+    }
+    rows = prev.rows;
+    grid.render();
+    save.show();
+    term.say('Undid last change.');
+    persist();
+    updateHistoryButtons();
+  });
+}
+
+if (redoBtn) {
+  redoBtn.addEventListener('click', () => {
+    const next = history.redo();
+    if (!next) {
+      term.error('Nothing to redo.');
+      updateHistoryButtons();
+      return;
+    }
+    rows = next.rows;
+    grid.render();
+    save.show();
+    term.say('Redid last change.');
+    persist();
+    updateHistoryButtons();
+  });
+}
 
 dropZone.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
@@ -123,6 +172,8 @@ clearBtn.addEventListener('click', () => {
   optionsPanel.classList.remove('visible');
   gridEl.innerHTML = '';
   save.hide();
+  history.clear();
+  updateHistoryButtons();
   term.say('File cleared from storage.');
 });
 
@@ -133,8 +184,11 @@ clearBtn.addEventListener('click', () => {
     optionsPanel.classList.add('visible');
     grid.render();
     save.show();
+    history.reset({ rows });
+    updateHistoryButtons();
     term.say('Restored your last session.');
   } else {
     term.say('Upload your file.');
+    updateHistoryButtons();
   }
 })();
