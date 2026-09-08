@@ -1,6 +1,7 @@
 import { createTerminal } from './terminal.js';
 import { setupSaveButton } from './download.js';
 import { saveDraft, loadDraft, clearDraft, clearAllDrafts, debounce } from './draft-storage.js';
+import { createHistory } from './history.js';
 
 const DRAFT_KEY = 'csvclean';
 
@@ -11,8 +12,11 @@ const outputArea = document.getElementById('output-area');
 const optionsPanel = document.getElementById('options-panel');
 const runBtn = document.getElementById('run-btn');
 const clearBtn = document.getElementById('clear-btn');
+const undoBtn = document.getElementById('undo-btn');
+const redoBtn = document.getElementById('redo-btn');
 
 const worker = new Worker(new URL('./csv-worker.js', import.meta.url));
+const history = createHistory();
 
 let parsedRows = null;
 let currentOutputRows = null;
@@ -41,6 +45,22 @@ function renderTable(rows) {
   outputArea.innerHTML = `<table class="output-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
 }
 
+function updateHistoryButtons() {
+  if (undoBtn) undoBtn.disabled = !history.canUndo();
+  if (redoBtn) redoBtn.disabled = !history.canRedo();
+}
+
+function snapshot() {
+  return { parsedRows, currentOutputRows };
+}
+
+function applyState(state) {
+  parsedRows = state.parsedRows;
+  currentOutputRows = state.currentOutputRows;
+  renderTable(currentOutputRows || parsedRows);
+  if (currentOutputRows) save.show(); else save.hide();
+}
+
 const persist = debounce(() => {
   if (!parsedRows) return;
   saveDraft(DRAFT_KEY, { parsedRows, currentOutputRows });
@@ -58,6 +78,8 @@ worker.onmessage = (e) => {
     renderTable(rows);
     term.say('File is ready. Run clean to check for issues.');
     save.hide();
+    history.reset(snapshot());
+    updateHistoryButtons();
     persist();
   } else {
     renderTable(rows);
@@ -70,6 +92,8 @@ worker.onmessage = (e) => {
       if (stats.blankCount) parts.push(`${stats.blankCount} blank row${stats.blankCount === 1 ? '' : 's'} removed`);
       if (stats.trimmedCount) parts.push(`${stats.trimmedCount} row${stats.trimmedCount === 1 ? '' : 's'} trimmed`);
       term.say(`Fixed: ${parts.join(', ')}.`);
+      history.push(snapshot());
+      updateHistoryButtons();
       persist();
     } else {
       term.error('No formatting errors found.');
@@ -94,6 +118,8 @@ function handleFile(file) {
   currentOutputRows = null;
   optionsPanel.classList.remove('visible');
   save.hide();
+  history.clear();
+  updateHistoryButtons();
   term.say('Uploading...');
   const reader = new FileReader();
 
@@ -121,6 +147,36 @@ runBtn.addEventListener('click', () => {
   worker.postMessage({ op: 'clean', rows: parsedRows });
 });
 
+if (undoBtn) {
+  undoBtn.addEventListener('click', () => {
+    const prev = history.undo();
+    if (!prev) {
+      term.error('Nothing to undo.');
+      updateHistoryButtons();
+      return;
+    }
+    applyState(prev);
+    term.say('Undid last change.');
+    persist();
+    updateHistoryButtons();
+  });
+}
+
+if (redoBtn) {
+  redoBtn.addEventListener('click', () => {
+    const next = history.redo();
+    if (!next) {
+      term.error('Nothing to redo.');
+      updateHistoryButtons();
+      return;
+    }
+    applyState(next);
+    term.say('Redid last change.');
+    persist();
+    updateHistoryButtons();
+  });
+}
+
 dropZone.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
 
@@ -146,6 +202,8 @@ clearBtn.addEventListener('click', () => {
   optionsPanel.classList.remove('visible');
   outputArea.innerHTML = '';
   save.hide();
+  history.clear();
+  updateHistoryButtons();
   term.say('File cleared from storage.');
 });
 
@@ -160,8 +218,11 @@ clearBtn.addEventListener('click', () => {
       currentOutputRows = draft.currentOutputRows;
       save.show();
     }
+    history.reset(snapshot());
+    updateHistoryButtons();
     term.say('Restored your last session.');
   } else {
     term.say('Upload your file.');
+    updateHistoryButtons();
   }
 })();
