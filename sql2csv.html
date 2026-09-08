@@ -30,6 +30,7 @@
       <div class="db-status-row hidden" id="db-status-row">
         <span class="db-status-text">Connected to database</span>
         <button class="clear-btn" type="button" id="db-disconnect-btn">Disconnect</button>
+        <button class="run-btn" type="button" id="browse-tables-btn">Browse tables</button>
       </div>
       <div class="save-box db-form" id="db-form">
         <label class="field-label" for="db-connstr-input">Neon connection string</label>
@@ -45,6 +46,17 @@
           <button class="run-btn" type="button" id="db-disconnect-yes">Disconnect</button>
           <button class="run-btn" type="button" id="db-disconnect-no">Cancel</button>
         </div>
+      </div>
+    </div>
+
+    <div class="schema-panel" id="schema-panel"></div>
+
+    <div class="save-box insert-confirm" id="insert-query-confirm">
+      <p class="lead" id="insert-query-label">Insert query for this table?</p>
+      <div class="save-box-actions">
+        <button class="run-btn" type="button" id="insert-query-append">Append</button>
+        <button class="run-btn" type="button" id="insert-query-replace">Replace</button>
+        <button class="run-btn" type="button" id="insert-query-cancel">Cancel</button>
       </div>
     </div>
 
