@@ -45,10 +45,6 @@ function renderTable(rows) {
   outputArea.innerHTML = `<table class="output-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
 }
 
-function updateHistoryButtons() {
-  if (undoBtn) undoBtn.disabled = !history.canUndo();
-  if (redoBtn) redoBtn.disabled = !history.canRedo();
-}
 
 function snapshot() {
   return { parsedRows, currentOutputRows };
@@ -79,7 +75,6 @@ worker.onmessage = (e) => {
     term.say('File is ready. Run clean to check for issues.');
     save.hide();
     history.reset(snapshot());
-    updateHistoryButtons();
     persist();
   } else {
     renderTable(rows);
@@ -93,7 +88,6 @@ worker.onmessage = (e) => {
       if (stats.trimmedCount) parts.push(`${stats.trimmedCount} row${stats.trimmedCount === 1 ? '' : 's'} trimmed`);
       term.say(`Fixed: ${parts.join(', ')}.`);
       history.push(snapshot());
-      updateHistoryButtons();
       persist();
     } else {
       term.error('No formatting errors found.');
@@ -119,7 +113,6 @@ function handleFile(file) {
   optionsPanel.classList.remove('visible');
   save.hide();
   history.clear();
-  updateHistoryButtons();
   term.say('Uploading...');
   const reader = new FileReader();
 
@@ -152,13 +145,11 @@ if (undoBtn) {
     const prev = history.undo();
     if (!prev) {
       term.error('Nothing to undo.');
-      updateHistoryButtons();
       return;
     }
     applyState(prev);
     term.say('Undid last change.');
     persist();
-    updateHistoryButtons();
   });
 }
 
@@ -167,13 +158,11 @@ if (redoBtn) {
     const next = history.redo();
     if (!next) {
       term.error('Nothing to redo.');
-      updateHistoryButtons();
       return;
     }
     applyState(next);
     term.say('Redid last change.');
     persist();
-    updateHistoryButtons();
   });
 }
 
@@ -203,7 +192,6 @@ clearBtn.addEventListener('click', () => {
   outputArea.innerHTML = '';
   save.hide();
   history.clear();
-  updateHistoryButtons();
   term.say('File cleared from storage.');
 });
 
@@ -219,10 +207,8 @@ clearBtn.addEventListener('click', () => {
       save.show();
     }
     history.reset(snapshot());
-    updateHistoryButtons();
     term.say('Restored your last session.');
   } else {
     term.say('Upload your file.');
-    updateHistoryButtons();
   }
 })();
