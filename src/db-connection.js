@@ -1,4 +1,4 @@
-// Shared DB connection helper: stores the user's Neon connection string
+// Shared DB connection helper: stores the user's connection string
 // client-side (localStorage, same pattern as draft-storage.js), never sent
 // anywhere except with each relay request, and never stored server-side.
 // Wires a small Connect/Disconnect UI that csvsql.js and sql2csv.js both use.
@@ -7,6 +7,20 @@ const STORAGE_KEY = 'csvkit-db-token';
 
 // Relay base. Vercel serverless functions live under /api on the same domain.
 const RELAY_BASE = '/api';
+
+// The 4 dialects with live Connect/Insert/Run support.
+export const SUPPORTED_DIALECTS = ['postgresql', 'cockroachdb', 'mysql', 'mariadb'];
+
+const DIALECT_LABELS = {
+  postgresql: 'PostgreSQL',
+  cockroachdb: 'CockroachDB',
+  mysql: 'MySQL',
+  mariadb: 'MariaDB',
+};
+
+export function dialectLabel(dialect) {
+  return DIALECT_LABELS[dialect] || dialect;
+}
 
 export function getConnectionString() {
   try {
@@ -37,54 +51,54 @@ function forgetConnectionString() {
 }
 
 // Validates a connection string against the relay with a trivial query.
-// Returns { ok: true } or { ok: false, error }.
-export async function testConnection(connStr) {
+// Returns { ok: true, detectedDialect } or { ok: false, error }.
+export async function testConnection(connStr, dialect) {
   try {
     const res = await fetch(`${RELAY_BASE}/query`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ connectionString: connStr, sql: 'SELECT 1' }),
+      body: JSON.stringify({ connectionString: connStr, sql: 'SELECT 1', dialect }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.error) {
       return { ok: false, error: data.error || `Relay returned ${res.status}.` };
     }
-    return { ok: true };
+    return { ok: true, detectedDialect: data.detectedDialect };
   } catch (err) {
     return { ok: false, error: 'Could not reach the relay. Check your connection.' };
   }
 }
 
 // Runs a SELECT query against the relay's /query endpoint.
-// Returns { ok: true, rows } or { ok: false, error }.
-export async function runQuery(connStr, sql) {
+// Returns { ok: true, rows, detectedDialect } or { ok: false, error }.
+export async function runQuery(connStr, sql, dialect) {
   try {
     const res = await fetch(`${RELAY_BASE}/query`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ connectionString: connStr, sql }),
+      body: JSON.stringify({ connectionString: connStr, sql, dialect }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.error) {
       return { ok: false, error: data.error || `Relay returned ${res.status}.` };
     }
-    return { ok: true, rows: data.rows || [] };
+    return { ok: true, rows: data.rows || [], detectedDialect: data.detectedDialect };
   } catch (err) {
     return { ok: false, error: 'Could not reach the relay. Check your connection.' };
   }
 }
 
-// Fetches the public schema's tables and columns via the relay's /query
-// endpoint. Returns { ok: true, tables: [{ name, columns: [{name, type}] }] }
-// or { ok: false, error }.
-export async function getSchema(connStr) {
-  const sql = `
-    SELECT table_name, column_name, data_type
-    FROM information_schema.columns
-    WHERE table_schema = 'public'
-    ORDER BY table_name, ordinal_position
-  `;
-  const result = await runQuery(connStr, sql);
+// Fetches the connected database's tables and columns via the relay's
+// /query endpoint. Returns { ok: true, tables: [{ name, columns: [{name, type}] }] }
+// or { ok: false, error }. dialect is required to pick the right schema
+// filter: Postgres/CockroachDB scope to the "public" schema, MySQL/MariaDB
+// scope to the current database (they don't use a "public" schema).
+export async function getSchema(connStr, dialect) {
+  const isMysqlFamily = dialect === 'mysql' || dialect === 'mariadb';
+  const sql = isMysqlFamily
+    ? `SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema = DATABASE() ORDER BY table_name, ordinal_position`
+    : `SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema = 'public' ORDER BY table_name, ordinal_position`;
+  const result = await runQuery(connStr, sql, dialect);
   if (!result.ok) return result;
   const tables = [];
   const byName = new Map();
@@ -106,7 +120,7 @@ export async function getSchema(connStr) {
 // text on semicolons here, which would break on any semicolon inside a
 // quoted value).
 // Returns { ok: true } or { ok: false, error }.
-export async function runInsert(connStr, statements) {
+export async function runInsert(connStr, statements, dialect) {
   if (!Array.isArray(statements) || statements.length === 0) {
     return { ok: false, error: 'No statements to run.' };
   }
@@ -114,7 +128,7 @@ export async function runInsert(connStr, statements) {
     const res = await fetch(`${RELAY_BASE}/insert`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ connectionString: connStr, statements }),
+      body: JSON.stringify({ connectionString: connStr, statements, dialect }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.error) {
@@ -141,7 +155,12 @@ export async function runInsert(connStr, statements) {
 // `term` is the page's terminal instance (say/error).
 // `onChange(connected)` is called whenever connection state changes, so the
 // page can enable/disable its DB-dependent button.
-export function setupConnectionUI(elements, term, onChange) {
+// `getDialect()` (optional) returns the currently-selected dialect string
+// (one of SUPPORTED_DIALECTS). When provided, Connect sends it to the relay
+// and, if the relay detects a different dialect on the actual database,
+// the connection is refused with a red terminal error naming the mismatch
+// instead of silently connecting with the wrong driver assumptions.
+export function setupConnectionUI(elements, term, onChange, getDialect) {
   const {
     connectBtn, statusRow, disconnectBtn,
     formBox, connStrInput, formConfirm, formCancel,
@@ -173,12 +192,19 @@ export function setupConnectionUI(elements, term, onChange) {
       term.error('Enter a connection string first.');
       return;
     }
+    const dialect = getDialect ? getDialect() : undefined;
     term.say('Validating connection...');
     formConfirm.disabled = true;
-    const result = await testConnection(connStr);
+    const result = await testConnection(connStr, dialect);
     formConfirm.disabled = false;
     if (!result.ok) {
       term.error(result.error || 'Could not connect. Check your connection string.');
+      return;
+    }
+    if (dialect && result.detectedDialect && result.detectedDialect !== dialect) {
+      term.error(
+        `Selected ${dialectLabel(dialect)}, but this database is ${dialectLabel(result.detectedDialect)}. Pick the right dialect and reconnect.`
+      );
       return;
     }
     storeConnectionString(connStr);
