@@ -21,6 +21,7 @@ const stackPanel = document.getElementById('stack-panel');
 const stackChipList = document.getElementById('stack-chip-list');
 const runStackBtn = document.getElementById('run-stack-btn');
 const clearStackBtn = document.getElementById('clear-stack-btn');
+const dialectSelect = document.getElementById('connect-dialect-select');
 
 let currentOutputRows = null;
 let dbConnected = false;
@@ -40,7 +41,8 @@ setupConnectionUI({
   confirmNo: document.getElementById('db-disconnect-no'),
 }, term, (connected) => {
   dbConnected = connected;
-});
+  dialectSelect.disabled = connected;
+}, () => dialectSelect.value);
 
 const save = setupSaveButton({
   saveRow: document.getElementById('save-row'),
@@ -55,7 +57,7 @@ const save = setupSaveButton({
 
 function renderSchema(tables) {
   if (!tables || tables.length === 0) {
-    schemaPanel.innerHTML = '<p class="lead">No tables found in the public schema.</p>';
+    schemaPanel.innerHTML = '<p class="lead">No tables found in the database.</p>';
     return;
   }
   schemaPanel.innerHTML = tables.map((t) => `
@@ -134,13 +136,14 @@ runStackBtn.addEventListener('click', async () => {
     term.error('Connect a database first.');
     return;
   }
+  const dialect = dialectSelect.value;
   runStackBtn.disabled = true;
   term.say('Running stacked tables...');
   const columnsOrder = [];
   const seenCols = new Set();
   const allRows = [];
   for (const table of stackedTables) {
-    const result = await runQuery(connStr, `SELECT * FROM ${table};`);
+    const result = await runQuery(connStr, `SELECT * FROM ${table};`, dialect);
     if (!result.ok) {
       runStackBtn.disabled = false;
       term.error(`"${table}" failed: ${result.error || 'query failed.'}`);
@@ -198,7 +201,7 @@ browseBtn.addEventListener('click', async () => {
   }
   browseBtn.disabled = true;
   term.say('Loading tables...');
-  const result = await getSchema(connStr);
+  const result = await getSchema(connStr, dialectSelect.value);
   browseBtn.disabled = false;
   if (!result.ok) {
     term.error(result.error || 'Could not load schema.');
@@ -219,10 +222,11 @@ function renderTable(rows) {
 }
 
 const persist = debounce(() => {
-  saveDraft(DRAFT_KEY, { queryValue: queryInput.value, currentOutputRows });
+  saveDraft(DRAFT_KEY, { queryValue: queryInput.value, currentOutputRows, dialectValue: dialectSelect.value });
 });
 
 queryInput.addEventListener('input', persist);
+dialectSelect.addEventListener('change', persist);
 
 runBtn.addEventListener('click', async () => {
   const query = queryInput.value.trim();
@@ -241,7 +245,7 @@ runBtn.addEventListener('click', async () => {
   }
   runBtn.disabled = true;
   term.say('Running query...');
-  const result = await runQuery(connStr, query);
+  const result = await runQuery(connStr, query, dialectSelect.value);
   runBtn.disabled = false;
   if (!result.ok) {
     term.error(result.error || 'Query failed.');
@@ -278,6 +282,7 @@ clearBtn.addEventListener('click', () => {
   const draft = loadDraft(DRAFT_KEY);
   if (draft && draft.queryValue) {
     queryInput.value = draft.queryValue;
+    if (draft.dialectValue) dialectSelect.value = draft.dialectValue;
     if (draft.currentOutputRows) {
       currentOutputRows = draft.currentOutputRows;
       renderTable(currentOutputRows);
