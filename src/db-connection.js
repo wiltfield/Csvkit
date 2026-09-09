@@ -238,30 +238,94 @@ export async function runInsert(connStr, statements, dialect) {
 // and, if the relay detects a different dialect on the actual database,
 // the connection is refused with a red terminal error naming the mismatch
 // instead of silently connecting with the wrong driver assumptions.
-export function setupConnectionUI(elements, term, onChange, getDialect) {
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// Wires the saved-connections UI. `elements` are DOM nodes already present
+// in the page's HTML (see csvsql.html / sql2csv.html markup):
+//   selectEl        - dropdown listing saved connections + "+ Add new connection"
+//   statusRow        - wrapper shown when a connection is active
+//   statusText       - text inside statusRow ("Connected to \"name\"")
+//   renameBtn        - opens renameBox for the active connection
+//   removeBtn        - opens confirmBox to remove the active connection
+//   renameBox        - inline rename form container (hidden by default)
+//   renameInput      - text input for the new name
+//   renameConfirm    - confirm rename button
+//   renameCancel     - cancel rename button
+//   formBox          - "add new connection" form container (hidden by default)
+//   nameInput        - text input for the new connection's name (optional)
+//   connStrInput     - text input for the connection string
+//   formConfirm      - "Connect" confirm button inside the form
+//   formCancel       - "Cancel" button inside the form
+//   confirmBox       - remove confirmation popup container (hidden by default)
+//   confirmYes       - confirm remove button
+//   confirmNo        - cancel remove button
+//   dialectSelect    - (optional) the page's dialect <select>; disabled while
+//                       a connection is active, kept in sync with its dialect
+// `term` is the page's terminal instance (say/error).
+// `onChange(connected)` is called whenever the active connection changes, so
+// the page can enable/disable its DB-dependent button.
+export function setupConnectionUI(elements, term, onChange) {
   const {
-    connectBtn, statusRow, disconnectBtn,
-    formBox, connStrInput, formConfirm, formCancel,
+    selectEl, statusRow, statusText, renameBtn, removeBtn,
+    renameBox, renameInput, renameConfirm, renameCancel,
+    formBox, nameInput, connStrInput, formConfirm, formCancel,
     confirmBox, confirmYes, confirmNo,
+    dialectSelect,
   } = elements;
 
+  function renderSelect() {
+    const list = getConnections();
+    const active = getActiveConnection();
+    const options = list
+      .map((c) => `<option value="${c.id}">${escapeHtml(c.name)} (${dialectLabel(c.dialect)})</option>`)
+      .join('');
+    selectEl.innerHTML = `${options}<option value="__add__">+ Add new connection</option>`;
+    selectEl.value = active ? active.id : '__add__';
+  }
+
   function render() {
-    const connected = isConnected();
-    connectBtn.classList.toggle('hidden', connected);
+    renderSelect();
+    const active = getActiveConnection();
+    const connected = !!active;
     statusRow.classList.toggle('hidden', !connected);
     formBox.classList.remove('visible');
     confirmBox.classList.remove('visible');
+    renameBox.classList.remove('visible');
+    if (dialectSelect) {
+      dialectSelect.disabled = connected;
+      if (connected) dialectSelect.value = active.dialect;
+    }
+    if (connected && statusText) {
+      statusText.textContent = `Connected to "${active.name}"`;
+    }
     onChange(connected);
   }
 
-  connectBtn.addEventListener('click', () => {
-    connStrInput.value = '';
-    formBox.classList.add('visible');
-    connStrInput.focus();
+  selectEl.addEventListener('change', () => {
+    const val = selectEl.value;
+    if (val === '__add__') {
+      nameInput.value = '';
+      connStrInput.value = '';
+      if (dialectSelect) dialectSelect.disabled = false;
+      formBox.classList.add('visible');
+      connStrInput.focus();
+      return;
+    }
+    setActiveConnection(val);
+    const active = getActiveConnection();
+    term.say(active ? `Switched to "${active.name}".` : 'Switched connection.');
+    render();
   });
 
   formCancel.addEventListener('click', () => {
     formBox.classList.remove('visible');
+    render();
   });
 
   formConfirm.addEventListener('click', async () => {
@@ -270,7 +334,7 @@ export function setupConnectionUI(elements, term, onChange, getDialect) {
       term.error('Enter a connection string first.');
       return;
     }
-    const dialect = getDialect ? getDialect() : undefined;
+    const dialect = dialectSelect ? dialectSelect.value : undefined;
     term.say('Validating connection...');
     formConfirm.disabled = true;
     const result = await testConnection(connStr, dialect);
@@ -285,8 +349,8 @@ export function setupConnectionUI(elements, term, onChange, getDialect) {
       );
       return;
     }
-    addConnection(undefined, connStr, dialect);
-    term.say('Database connected.');
+    const entry = addConnection(nameInput.value, connStr, dialect);
+    term.say(`Connected to "${entry.name}".`);
     render();
   });
 
@@ -295,7 +359,38 @@ export function setupConnectionUI(elements, term, onChange, getDialect) {
     if (e.key === 'Escape') formCancel.click();
   });
 
-  disconnectBtn.addEventListener('click', () => {
+  renameBtn.addEventListener('click', () => {
+    const active = getActiveConnection();
+    if (!active) return;
+    renameInput.value = active.name;
+    renameBox.classList.add('visible');
+    renameInput.focus();
+    renameInput.select();
+  });
+
+  renameCancel.addEventListener('click', () => {
+    renameBox.classList.remove('visible');
+  });
+
+  renameConfirm.addEventListener('click', () => {
+    const active = getActiveConnection();
+    if (!active) return;
+    const newName = renameInput.value.trim();
+    if (!newName) {
+      term.error('Enter a name first.');
+      return;
+    }
+    renameConnection(active.id, newName);
+    term.say('Renamed.');
+    render();
+  });
+
+  renameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') renameConfirm.click();
+    if (e.key === 'Escape') renameCancel.click();
+  });
+
+  removeBtn.addEventListener('click', () => {
     confirmBox.classList.add('visible');
   });
 
@@ -305,9 +400,11 @@ export function setupConnectionUI(elements, term, onChange, getDialect) {
 
   confirmYes.addEventListener('click', () => {
     const active = getActiveConnection();
-    if (active) removeConnection(active.id);
+    if (active) {
+      removeConnection(active.id);
+      term.say(`Removed "${active.name}".`);
+    }
     confirmBox.classList.remove('visible');
-    term.say('Database disconnected.');
     render();
   });
 
