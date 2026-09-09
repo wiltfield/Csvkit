@@ -25,27 +25,9 @@
       <p class="lead">Generate a CREATE TABLE and INSERT statements from your CSV, or insert it directly into a connected database.</p>
     </header>
 
-    <div class="db-connect" id="db-connect">
-      <button class="run-btn" type="button" id="db-connect-btn">Connect DB</button>
-      <div class="db-status-row hidden" id="db-status-row">
-        <span class="db-status-text">Connected to database</span>
-        <button class="clear-btn" type="button" id="db-disconnect-btn">Disconnect</button>
-      </div>
-      <div class="save-box db-form" id="db-form">
-        <label class="field-label" for="db-connstr-input">Neon connection string</label>
-        <input class="text-input" type="text" id="db-connstr-input" placeholder="postgresql://user:pass@host/dbname">
-        <div class="save-box-actions">
-          <button class="run-btn" type="button" id="db-form-confirm">Connect</button>
-          <button class="run-btn" type="button" id="db-form-cancel">Cancel</button>
-        </div>
-      </div>
-      <div class="save-box db-confirm" id="db-disconnect-confirm">
-        <p class="lead">Disconnect from this database?</p>
-        <div class="save-box-actions">
-          <button class="run-btn" type="button" id="db-disconnect-yes">Disconnect</button>
-          <button class="run-btn" type="button" id="db-disconnect-no">Cancel</button>
-        </div>
-      </div>
+    <div class="mode-toggle" id="mode-toggle">
+      <button class="mode-btn active" type="button" data-mode="generate">Generate SQL</button>
+      <button class="mode-btn" type="button" data-mode="connect">Connect &amp; push to DB</button>
     </div>
 
     <div class="drop-zone" id="drop-zone">
@@ -53,11 +35,13 @@
       <input type="file" id="file-input" accept=".csv" hidden>
     </div>
 
-    <div class="options-panel" id="options-panel">
-      <div class="field-row">
-        <label class="field-label" for="table-name-input">Table name</label>
-        <input class="text-input" type="text" id="table-name-input" placeholder="data">
-      </div>
+    <div class="field-row">
+      <label class="field-label" for="table-name-input">Table name</label>
+      <input class="text-input" type="text" id="table-name-input" placeholder="data">
+    </div>
+
+    <!-- Mode: Generate SQL (no DB connection, full 18-dialect list) -->
+    <div class="options-panel" id="generate-panel">
       <div class="field-row">
         <label class="field-label" for="dialect-select">SQL dialect</label>
         <select class="select-input" id="dialect-select">
@@ -90,13 +74,50 @@
       <button class="run-btn" type="button" id="run-btn">Generate SQL</button>
     </div>
 
+    <!-- Mode: Connect & push to DB (4 supported dialects, live connection) -->
+    <div class="options-panel" id="connect-panel">
+      <div class="field-row">
+        <label class="field-label" for="connect-dialect-select">Database type</label>
+        <select class="select-input" id="connect-dialect-select">
+          <option value="postgresql">PostgreSQL</option>
+          <option value="cockroachdb">CockroachDB</option>
+          <option value="mysql">MySQL</option>
+          <option value="mariadb">MariaDB</option>
+        </select>
+      </div>
+
+      <div class="db-connect" id="db-connect">
+        <button class="run-btn" type="button" id="db-connect-btn">Connect DB</button>
+        <div class="db-status-row hidden" id="db-status-row">
+          <span class="db-status-text">Connected to database</span>
+          <button class="clear-btn" type="button" id="db-disconnect-btn">Disconnect</button>
+        </div>
+        <div class="save-box db-form" id="db-form">
+          <label class="field-label" for="db-connstr-input">Connection string</label>
+          <input class="text-input" type="text" id="db-connstr-input" placeholder="postgresql://user:pass@host/dbname">
+          <div class="save-box-actions">
+            <button class="run-btn" type="button" id="db-form-confirm">Connect</button>
+            <button class="run-btn" type="button" id="db-form-cancel">Cancel</button>
+          </div>
+        </div>
+        <div class="save-box db-confirm" id="db-disconnect-confirm">
+          <p class="lead">Disconnect from this database?</p>
+          <div class="save-box-actions">
+            <button class="run-btn" type="button" id="db-disconnect-yes">Disconnect</button>
+            <button class="run-btn" type="button" id="db-disconnect-no">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <button class="run-btn stub-btn" type="button" id="insert-db-btn">Insert into database</button>
+    </div>
+
     <section class="output-area" id="output-area" aria-live="polite"></section>
 
     <div class="action-row">
       <div class="save-row" id="save-row">
         <button class="save-btn" type="button" id="save-btn">Save</button>
       </div>
-      <button class="run-btn stub-btn" type="button" id="insert-db-btn">Insert into database</button>
       <button class="clear-btn" type="button" id="clear-btn">Clear file</button>
     </div>
     <div class="save-box" id="save-box">
