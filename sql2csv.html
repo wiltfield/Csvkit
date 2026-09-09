@@ -36,13 +36,27 @@
     </div>
 
     <div class="db-connect" id="db-connect">
-      <button class="run-btn" type="button" id="db-connect-btn">Connect DB</button>
+      <div class="field-row">
+        <label class="field-label" for="db-select">Database</label>
+        <select class="select-input" id="db-select"></select>
+      </div>
       <div class="db-status-row hidden" id="db-status-row">
-        <span class="db-status-text">Connected to database</span>
-        <button class="clear-btn" type="button" id="db-disconnect-btn">Disconnect</button>
+        <span class="db-status-text" id="db-status-text">Connected to database</span>
+        <button class="clear-btn" type="button" id="db-rename-btn">Rename</button>
+        <button class="clear-btn" type="button" id="db-remove-btn">Remove</button>
         <button class="run-btn" type="button" id="browse-tables-btn">Browse tables</button>
       </div>
+      <div class="save-box db-form" id="db-rename-box">
+        <label class="field-label" for="db-rename-input">Name</label>
+        <input class="text-input" type="text" id="db-rename-input">
+        <div class="save-box-actions">
+          <button class="run-btn" type="button" id="db-rename-confirm">Save</button>
+          <button class="run-btn" type="button" id="db-rename-cancel">Cancel</button>
+        </div>
+      </div>
       <div class="save-box db-form" id="db-form">
+        <label class="field-label" for="db-name-input">Name (optional)</label>
+        <input class="text-input" type="text" id="db-name-input" placeholder="My database">
         <label class="field-label" for="db-connstr-input">Connection string</label>
         <input class="text-input" type="text" id="db-connstr-input" placeholder="postgresql://user:pass@host/dbname">
         <div class="save-box-actions">
@@ -50,11 +64,11 @@
           <button class="run-btn" type="button" id="db-form-cancel">Cancel</button>
         </div>
       </div>
-      <div class="save-box db-confirm" id="db-disconnect-confirm">
-        <p class="lead">Disconnect from this database?</p>
+      <div class="save-box db-confirm" id="db-remove-confirm">
+        <p class="lead">Remove this saved connection?</p>
         <div class="save-box-actions">
-          <button class="run-btn" type="button" id="db-disconnect-yes">Disconnect</button>
-          <button class="run-btn" type="button" id="db-disconnect-no">Cancel</button>
+          <button class="run-btn" type="button" id="db-remove-yes">Remove</button>
+          <button class="run-btn" type="button" id="db-remove-no">Cancel</button>
         </div>
       </div>
     </div>
