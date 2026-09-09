@@ -25,6 +25,16 @@
       <p class="lead">Run a SQL query against a connected database and save the results as a CSV.</p>
     </header>
 
+    <div class="field-row">
+      <label class="field-label" for="connect-dialect-select">Database type</label>
+      <select class="select-input" id="connect-dialect-select">
+        <option value="postgresql">PostgreSQL</option>
+        <option value="cockroachdb">CockroachDB</option>
+        <option value="mysql">MySQL</option>
+        <option value="mariadb">MariaDB</option>
+      </select>
+    </div>
+
     <div class="db-connect" id="db-connect">
       <button class="run-btn" type="button" id="db-connect-btn">Connect DB</button>
       <div class="db-status-row hidden" id="db-status-row">
@@ -33,7 +43,7 @@
         <button class="run-btn" type="button" id="browse-tables-btn">Browse tables</button>
       </div>
       <div class="save-box db-form" id="db-form">
-        <label class="field-label" for="db-connstr-input">Neon connection string</label>
+        <label class="field-label" for="db-connstr-input">Connection string</label>
         <input class="text-input" type="text" id="db-connstr-input" placeholder="postgresql://user:pass@host/dbname">
         <div class="save-box-actions">
           <button class="run-btn" type="button" id="db-form-confirm">Connect</button>
