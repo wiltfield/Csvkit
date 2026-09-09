@@ -33,21 +33,28 @@ let mode = 'generate'; // 'generate' | 'connect'
 let dbConnected = false;
 
 setupConnectionUI({
-  connectBtn: document.getElementById('db-connect-btn'),
+  selectEl: document.getElementById('db-select'),
   statusRow: document.getElementById('db-status-row'),
-  disconnectBtn: document.getElementById('db-disconnect-btn'),
+  statusText: document.getElementById('db-status-text'),
+  renameBtn: document.getElementById('db-rename-btn'),
+  removeBtn: document.getElementById('db-remove-btn'),
+  renameBox: document.getElementById('db-rename-box'),
+  renameInput: document.getElementById('db-rename-input'),
+  renameConfirm: document.getElementById('db-rename-confirm'),
+  renameCancel: document.getElementById('db-rename-cancel'),
   formBox: document.getElementById('db-form'),
+  nameInput: document.getElementById('db-name-input'),
   connStrInput: document.getElementById('db-connstr-input'),
   formConfirm: document.getElementById('db-form-confirm'),
   formCancel: document.getElementById('db-form-cancel'),
-  confirmBox: document.getElementById('db-disconnect-confirm'),
-  confirmYes: document.getElementById('db-disconnect-yes'),
-  confirmNo: document.getElementById('db-disconnect-no'),
+  confirmBox: document.getElementById('db-remove-confirm'),
+  confirmYes: document.getElementById('db-remove-yes'),
+  confirmNo: document.getElementById('db-remove-no'),
+  dialectSelect: connectDialectSelect,
 }, term, (connected) => {
   dbConnected = connected;
-  connectDialectSelect.disabled = connected;
   insertBtn.classList.toggle('stub-btn', !connected);
-}, () => connectDialectSelect.value);
+});
 
 const worker = new Worker(new URL('./csv-worker.js', import.meta.url));
 
