@@ -3,7 +3,13 @@
 // anywhere except with each relay request, and never stored server-side.
 // Wires a small Connect/Disconnect UI that csvsql.js and sql2csv.js both use.
 
-const STORAGE_KEY = 'csvkit-db-token';
+// Storage model: an array of saved connections, plus a separate pointer to
+// which one is "active" (used by the DB-dependent buttons on each page).
+// Replaces the old single csvkit-db-token string so a user can save more
+// than one database and switch between them (chunk 8 builds the UI for
+// that on top of these helpers).
+const CONNECTIONS_KEY = 'csvkit-db-connections';
+const ACTIVE_KEY = 'csvkit-db-active-id';
 
 // Relay base. Vercel serverless functions live under /api on the same domain.
 const RELAY_BASE = '/api';
@@ -22,32 +28,104 @@ export function dialectLabel(dialect) {
   return DIALECT_LABELS[dialect] || dialect;
 }
 
-export function getConnectionString() {
+function loadConnections() {
   try {
-    return localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(CONNECTIONS_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
+  } catch (err) {
+    return [];
+  }
+}
+
+function persistConnections(list) {
+  try {
+    localStorage.setItem(CONNECTIONS_KEY, JSON.stringify(list));
+  } catch (err) {
+    // ignore, list just won't persist across reloads
+  }
+}
+
+function getActiveConnectionId() {
+  try {
+    return localStorage.getItem(ACTIVE_KEY);
   } catch (err) {
     return null;
   }
 }
 
-export function isConnected() {
-  return !!getConnectionString();
-}
-
-function storeConnectionString(connStr) {
+function setActiveConnectionId(id) {
   try {
-    localStorage.setItem(STORAGE_KEY, connStr);
-  } catch (err) {
-    // ignore, connection just won't persist across reloads
-  }
-}
-
-function forgetConnectionString() {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
+    if (id) localStorage.setItem(ACTIVE_KEY, id);
+    else localStorage.removeItem(ACTIVE_KEY);
   } catch (err) {
     // ignore
   }
+}
+
+// Returns every saved connection: [{ id, name, connectionString, dialect }].
+export function getConnections() {
+  return loadConnections();
+}
+
+// Returns the currently active connection object, or null.
+export function getActiveConnection() {
+  const id = getActiveConnectionId();
+  if (!id) return null;
+  return loadConnections().find((c) => c.id === id) || null;
+}
+
+// Sets which saved connection is active. No-op if the id isn't in the list.
+export function setActiveConnection(id) {
+  const exists = loadConnections().some((c) => c.id === id);
+  setActiveConnectionId(exists ? id : null);
+}
+
+// Adds a new saved connection, makes it active, and returns the new entry.
+// name falls back to the dialect's display label if left blank.
+export function addConnection(name, connStr, dialect) {
+  const list = loadConnections();
+  const entry = {
+    id: `conn-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    name: name && name.trim() ? name.trim() : dialectLabel(dialect),
+    connectionString: connStr,
+    dialect,
+  };
+  list.push(entry);
+  persistConnections(list);
+  setActiveConnectionId(entry.id);
+  return entry;
+}
+
+// Removes a saved connection. Clears the active pointer if it was active.
+export function removeConnection(id) {
+  const list = loadConnections().filter((c) => c.id !== id);
+  persistConnections(list);
+  if (getActiveConnectionId() === id) {
+    setActiveConnectionId(null);
+  }
+}
+
+// Renames a saved connection. Returns false if the id wasn't found.
+export function renameConnection(id, newName) {
+  const list = loadConnections();
+  const entry = list.find((c) => c.id === id);
+  if (!entry) return false;
+  entry.name = newName && newName.trim() ? newName.trim() : entry.name;
+  persistConnections(list);
+  return true;
+}
+
+// Backward-compat single-connection helpers, now backed by whichever saved
+// connection is active. Existing callers (runQuery/runInsert callers in
+// csvsql.js/sql2csv.js) keep working unchanged.
+export function getConnectionString() {
+  const active = getActiveConnection();
+  return active ? active.connectionString : null;
+}
+
+export function isConnected() {
+  return !!getActiveConnection();
 }
 
 // Validates a connection string against the relay with a trivial query.
@@ -207,7 +285,7 @@ export function setupConnectionUI(elements, term, onChange, getDialect) {
       );
       return;
     }
-    storeConnectionString(connStr);
+    addConnection(undefined, connStr, dialect);
     term.say('Database connected.');
     render();
   });
@@ -226,7 +304,8 @@ export function setupConnectionUI(elements, term, onChange, getDialect) {
   });
 
   confirmYes.addEventListener('click', () => {
-    forgetConnectionString();
+    const active = getActiveConnection();
+    if (active) removeConnection(active.id);
     confirmBox.classList.remove('visible');
     term.say('Database disconnected.');
     render();
