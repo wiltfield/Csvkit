@@ -6,8 +6,7 @@
 // Storage model: an array of saved connections, plus a separate pointer to
 // which one is "active" (used by the DB-dependent buttons on each page).
 // Replaces the old single csvkit-db-token string so a user can save more
-// than one database and switch between them (chunk 8 builds the UI for
-// that on top of these helpers).
+// than one database and switch between them.
 const CONNECTIONS_KEY = 'csvkit-db-connections';
 const ACTIVE_KEY = 'csvkit-db-active-id';
 
@@ -285,8 +284,9 @@ export function setupConnectionUI(elements, term, onChange) {
     const options = list
       .map((c) => `<option value="${c.id}">${escapeHtml(c.name)} (${dialectLabel(c.dialect)})</option>`)
       .join('');
-    selectEl.innerHTML = `${options}<option value="__add__">+ Add new connection</option>`;
-    selectEl.value = active ? active.id : '__add__';
+    const placeholder = active ? '' : '<option value="" selected>Select a database...</option>';
+    selectEl.innerHTML = `${placeholder}${options}<option value="__add__">+ Add new connection</option>`;
+    selectEl.value = active ? active.id : '';
   }
 
   function render() {
