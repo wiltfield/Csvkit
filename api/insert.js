@@ -1,9 +1,99 @@
 const { Client } = require('pg');
+const mysql = require('mysql2/promise');
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+const MYSQL_DIALECTS = new Set(['mysql', 'mariadb']);
+
+function connectError(err) {
+  const e = new Error(`Could not connect to database: ${err.message}`);
+  e.status = 502;
+  return e;
+}
+
+function insertError(err) {
+  const e = new Error(`Insert failed: ${err.message}`);
+  e.status = 400;
+  return e;
+}
+
+async function handlePgInsert(connectionString, statements) {
+  const client = new Client({
+    connectionString,
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 8000,
+  });
+
+  try {
+    await client.connect();
+  } catch (err) {
+    await client.end().catch(() => {});
+    throw connectError(err);
+  }
+
+  try {
+    let detectedDialect = 'postgresql';
+    try {
+      const v = await client.query('SELECT version()');
+      if (/cockroachdb/i.test(v.rows[0]?.version || '')) detectedDialect = 'cockroachdb';
+    } catch (err) {
+      // detection is best-effort
+    }
+
+    await client.query('SET statement_timeout = 15000');
+    await client.query('BEGIN');
+    for (const stmt of statements) {
+      if (typeof stmt === 'string' && stmt.trim()) {
+        await client.query(stmt);
+      }
+    }
+    await client.query('COMMIT');
+
+    return { detectedDialect };
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw insertError(err);
+  } finally {
+    await client.end().catch(() => {});
+  }
+}
+
+async function handleMysqlInsert(connectionString, statements) {
+  let conn;
+  try {
+    conn = await mysql.createConnection({ uri: connectionString, connectTimeout: 8000 });
+  } catch (err) {
+    throw connectError(err);
+  }
+
+  try {
+    let detectedDialect = 'mysql';
+    try {
+      const [vRows] = await conn.query('SELECT VERSION() AS v');
+      if (/mariadb/i.test(vRows[0]?.v || '')) detectedDialect = 'mariadb';
+    } catch (err) {
+      // detection is best-effort
+    }
+
+    await conn.beginTransaction();
+    for (const stmt of statements) {
+      if (typeof stmt === 'string' && stmt.trim()) {
+        await conn.query(stmt);
+      }
+    }
+    await conn.commit();
+
+    return { detectedDialect };
+  } catch (err) {
+    await conn.rollback().catch(() => {});
+    throw insertError(err);
+  } finally {
+    await conn.end().catch(() => {});
+  }
 }
 
 module.exports = async function handler(req, res) {
@@ -27,7 +117,7 @@ module.exports = async function handler(req, res) {
   }
   body = body || {};
 
-  const { connectionString, statements } = body;
+  const { connectionString, statements, dialect } = body;
 
   if (!connectionString || typeof connectionString !== 'string') {
     return res.status(400).json({ error: 'Missing or invalid connectionString.' });
@@ -39,34 +129,19 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Missing or empty statements array.' });
   }
 
-  const client = new Client({
-    connectionString,
-    ssl: { rejectUnauthorized: false },
-    connectionTimeoutMillis: 8000
-  });
+  const useMysql = MYSQL_DIALECTS.has(dialect);
 
   try {
-    await client.connect();
-  } catch (err) {
-    await client.end().catch(() => {});
-    return res.status(502).json({ error: `Could not connect to database: ${err.message}` });
-  }
+    const result = useMysql
+      ? await handleMysqlInsert(connectionString, statements)
+      : await handlePgInsert(connectionString, statements);
 
-  try {
-    await client.query('SET statement_timeout = 15000');
-    await client.query('BEGIN');
-    for (const stmt of statements) {
-      if (typeof stmt === 'string' && stmt.trim()) {
-        await client.query(stmt);
-      }
-    }
-    await client.query('COMMIT');
-    await client.end();
-
-    return res.status(200).json({ success: true, statementsRun: statements.length });
+    return res.status(200).json({
+      success: true,
+      statementsRun: statements.length,
+      detectedDialect: result.detectedDialect,
+    });
   } catch (err) {
-    await client.query('ROLLBACK').catch(() => {});
-    await client.end().catch(() => {});
-    return res.status(400).json({ error: `Insert failed: ${err.message}` });
+    return res.status(err.status || 400).json({ error: err.message });
   }
 };
