@@ -17,6 +17,7 @@ const connectPanel = document.getElementById('connect-panel');
 const dialectSelect = document.getElementById('dialect-select');
 const connectDialectSelect = document.getElementById('connect-dialect-select');
 const runBtn = document.getElementById('run-btn');
+const copyBtn = document.getElementById('copy-btn');
 const clearBtn = document.getElementById('clear-btn');
 
 const saveRow = document.getElementById('save-row');
@@ -194,6 +195,24 @@ runBtn.addEventListener('click', () => {
   pendingGeneration = { tableName, dialect };
   term.say('Generating SQL...');
   worker.postMessage({ op: 'sql', rows: parsedRows, tableName, dialect });
+});
+
+copyBtn.addEventListener('click', () => {
+  if (!currentSQL) {
+    term.error('Nothing to copy.');
+    return;
+  }
+  navigator.clipboard.writeText(currentSQL).then(() => {
+    const original = copyBtn.textContent;
+    copyBtn.textContent = 'Copied!';
+    copyBtn.disabled = true;
+    setTimeout(() => {
+      copyBtn.textContent = original;
+      copyBtn.disabled = false;
+    }, 1500);
+  }).catch(() => {
+    term.error('Could not copy to clipboard.');
+  });
 });
 
 tableNameInput.addEventListener('input', persist);
