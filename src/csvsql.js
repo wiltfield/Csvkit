@@ -1,7 +1,7 @@
 import { createTerminal } from './terminal.js';
 import { triggerDownload } from './download.js';
 import { saveDraft, loadDraft, clearDraft, clearAllDrafts, debounce } from './draft-storage.js';
-import { setupConnectionUI, isConnected, getConnectionString, runInsert } from './db-connection.js';
+import { setupConnectionUI, getConnectionString, runInsert } from './db-connection.js';
 
 const DRAFT_KEY = 'csvsql';
 
@@ -9,9 +9,13 @@ const term = createTerminal(document.getElementById('terminal'));
 const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
 const outputArea = document.getElementById('output-area');
-const optionsPanel = document.getElementById('options-panel');
 const tableNameInput = document.getElementById('table-name-input');
+
+const modeToggle = document.getElementById('mode-toggle');
+const generatePanel = document.getElementById('generate-panel');
+const connectPanel = document.getElementById('connect-panel');
 const dialectSelect = document.getElementById('dialect-select');
+const connectDialectSelect = document.getElementById('connect-dialect-select');
 const runBtn = document.getElementById('run-btn');
 const clearBtn = document.getElementById('clear-btn');
 
@@ -24,7 +28,9 @@ const saveCancel = document.getElementById('save-cancel');
 
 const insertBtn = document.getElementById('insert-db-btn');
 
+let mode = 'generate'; // 'generate' | 'connect'
 let dbConnected = false;
+
 setupConnectionUI({
   connectBtn: document.getElementById('db-connect-btn'),
   statusRow: document.getElementById('db-status-row'),
@@ -38,8 +44,9 @@ setupConnectionUI({
   confirmNo: document.getElementById('db-disconnect-no'),
 }, term, (connected) => {
   dbConnected = connected;
+  connectDialectSelect.disabled = connected;
   insertBtn.classList.toggle('stub-btn', !connected);
-});
+}, () => connectDialectSelect.value);
 
 const worker = new Worker(new URL('./csv-worker.js', import.meta.url));
 
@@ -49,6 +56,11 @@ let currentStatements = null;
 let lastTableName = null;
 let lastDialect = null;
 
+// Set right before postMessage({op:'sql', ...}) so onmessage knows which
+// table/dialect the result belongs to, and whether an insert should follow.
+let pendingGeneration = null; // { tableName, dialect }
+let pendingInsertAfterGenerate = null; // { connStr, tableName, dialect }
+
 function renderSQL(sql) {
   if (!sql) {
     outputArea.innerHTML = '<p class="lead">No data found in that file.</p>';
@@ -56,6 +68,25 @@ function renderSQL(sql) {
   }
   outputArea.innerHTML = `<pre class="json-view">${sql.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</pre>`;
 }
+
+function updatePanelVisibility() {
+  modeToggle.querySelectorAll('.mode-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+  const ready = !!parsedRows;
+  generatePanel.classList.toggle('visible', ready && mode === 'generate');
+  connectPanel.classList.toggle('visible', ready && mode === 'connect');
+}
+
+function switchMode(newMode) {
+  mode = newMode;
+  updatePanelVisibility();
+  persist();
+}
+
+modeToggle.querySelectorAll('.mode-btn').forEach((btn) => {
+  btn.addEventListener('click', () => switchMode(btn.dataset.mode));
+});
 
 const persist = debounce(() => {
   if (!parsedRows) return;
@@ -67,6 +98,8 @@ const persist = debounce(() => {
     lastDialect,
     tableNameValue: tableNameInput.value,
     dialectValue: dialectSelect.value,
+    connectDialectValue: connectDialectSelect.value,
+    mode,
   });
 });
 
@@ -74,12 +107,14 @@ worker.onmessage = (e) => {
   const { ok, error, rows, sql, statements } = e.data;
   if (!ok) {
     term.error(error || 'Could not process that file.');
+    pendingGeneration = null;
+    pendingInsertAfterGenerate = null;
     return;
   }
   if (rows && parsedRows === null) {
     // Initial parse of the uploaded file.
     parsedRows = rows;
-    optionsPanel.classList.add('visible');
+    updatePanelVisibility();
     outputArea.innerHTML = '<p class="lead">File is ready. Name your table and generate SQL.</p>';
     term.say('File is ready. Name your table and generate SQL.');
     persist();
@@ -88,15 +123,26 @@ worker.onmessage = (e) => {
   // SQL generation result.
   currentSQL = sql;
   currentStatements = statements;
-  lastTableName = tableNameInput.value.trim() || 'data';
-  lastDialect = dialectSelect.value;
+  lastTableName = pendingGeneration ? pendingGeneration.tableName : (tableNameInput.value.trim() || 'data');
+  lastDialect = pendingGeneration ? pendingGeneration.dialect : dialectSelect.value;
+  pendingGeneration = null;
   renderSQL(sql);
   saveRow.classList.add('visible');
   term.say('SQL generated. Save the file or insert into a database.');
   persist();
+
+  if (pendingInsertAfterGenerate) {
+    const { connStr, tableName, dialect } = pendingInsertAfterGenerate;
+    pendingInsertAfterGenerate = null;
+    doInsert(connStr, currentStatements, dialect, tableName);
+  }
 };
 
-worker.onerror = () => term.error('Could not process that file.');
+worker.onerror = () => {
+  term.error('Could not process that file.');
+  pendingGeneration = null;
+  pendingInsertAfterGenerate = null;
+};
 
 function handleFile(file) {
   if (!file) {
@@ -113,7 +159,7 @@ function handleFile(file) {
   currentSQL = null;
   currentStatements = null;
   lastTableName = null;
-  optionsPanel.classList.remove('visible');
+  updatePanelVisibility();
   saveRow.classList.remove('visible');
   saveBox.classList.remove('visible');
   term.say('Uploading...');
@@ -145,12 +191,14 @@ runBtn.addEventListener('click', () => {
     term.error(`Already generated ${dialectSelect.options[dialectSelect.selectedIndex].text} SQL for table "${tableName}".`);
     return;
   }
+  pendingGeneration = { tableName, dialect };
   term.say('Generating SQL...');
   worker.postMessage({ op: 'sql', rows: parsedRows, tableName, dialect });
 });
 
 tableNameInput.addEventListener('input', persist);
 dialectSelect.addEventListener('change', persist);
+connectDialectSelect.addEventListener('change', persist);
 
 dropZone.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
@@ -176,8 +224,10 @@ clearBtn.addEventListener('click', () => {
   currentSQL = null;
   currentStatements = null;
   lastTableName = null;
+  pendingGeneration = null;
+  pendingInsertAfterGenerate = null;
   tableNameInput.value = '';
-  optionsPanel.classList.remove('visible');
+  updatePanelVisibility();
   outputArea.innerHTML = '';
   saveRow.classList.remove('visible');
   saveBox.classList.remove('visible');
@@ -213,15 +263,29 @@ saveFilename.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') saveCancel.click();
 });
 
-// Inserts the generated CREATE TABLE + INSERT statements into the
-// connected database via the relay's /insert endpoint.
-insertBtn.addEventListener('click', async () => {
-  if (!dbConnected) {
-    term.error('Connect a database first.');
+// Inserts the given statements into the connected database via the
+// relay's /insert endpoint.
+async function doInsert(connStr, statements, dialect, tableName) {
+  insertBtn.disabled = true;
+  term.say(`Inserting into "${tableName || 'data'}"...`);
+  const result = await runInsert(connStr, statements, dialect);
+  insertBtn.disabled = false;
+  if (!result.ok) {
+    term.error(result.error || 'Insert failed.');
     return;
   }
-  if (!currentStatements) {
-    term.error('Generate SQL first.');
+  term.say(`Inserted into "${tableName || 'data'}".`);
+}
+
+// Insert into database: generates SQL for the current table name + connect
+// dialect if it isn't already generated for that exact combo, then inserts.
+insertBtn.addEventListener('click', async () => {
+  if (!parsedRows) {
+    term.error('Upload a file first.');
+    return;
+  }
+  if (!dbConnected) {
+    term.error('Connect a database first.');
     return;
   }
   const connStr = getConnectionString();
@@ -229,24 +293,29 @@ insertBtn.addEventListener('click', async () => {
     term.error('Connect a database first.');
     return;
   }
-  insertBtn.disabled = true;
-  term.say(`Inserting into "${lastTableName || 'data'}"...`);
-  const result = await runInsert(connStr, currentStatements);
-  insertBtn.disabled = false;
-  if (!result.ok) {
-    term.error(result.error || 'Insert failed.');
+  const tableName = tableNameInput.value.trim() || 'data';
+  const dialect = connectDialectSelect.value;
+
+  if (currentStatements && tableName === lastTableName && dialect === lastDialect) {
+    doInsert(connStr, currentStatements, dialect, tableName);
     return;
   }
-  term.say(`Inserted into "${lastTableName || 'data'}".`);
+
+  pendingGeneration = { tableName, dialect };
+  pendingInsertAfterGenerate = { connStr, tableName, dialect };
+  term.say('Generating SQL...');
+  worker.postMessage({ op: 'sql', rows: parsedRows, tableName, dialect });
 });
 
 (function restore() {
   const draft = loadDraft(DRAFT_KEY);
   if (draft && draft.parsedRows) {
     parsedRows = draft.parsedRows;
-    optionsPanel.classList.add('visible');
     if (draft.tableNameValue) tableNameInput.value = draft.tableNameValue;
     if (draft.dialectValue) dialectSelect.value = draft.dialectValue;
+    if (draft.connectDialectValue) connectDialectSelect.value = draft.connectDialectValue;
+    mode = draft.mode === 'connect' ? 'connect' : 'generate';
+    updatePanelVisibility();
     if (draft.currentSQL) {
       currentSQL = draft.currentSQL;
       currentStatements = draft.currentStatements || null;
