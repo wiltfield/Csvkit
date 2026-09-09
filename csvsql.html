@@ -23,7 +23,26 @@
     <header class="intro">
       <h1 class="title">csvsql</h1>
       <p class="lead">Generate a CREATE TABLE and INSERT statements from your CSV, or insert it directly into a connected database.</p>
+      <button type="button" class="info-toggle" id="info-toggle">Show info</button>
+      <p class="lead" id="dialect-info" hidden>In <span class="accent-text">Generate SQL</span> mode you can find up to 18 supported dialects, including ones supported in the original <span class="accent-text">csvkit</span>, with the addition of a few others that may be niche or old, though you'd have to copy the output and push it manually in your own database's SQL editor. Alternatively, in <span class="accent-text">Connect &amp; push to DB</span> mode you can connect your database and push directly into it, four dialects are supported in this mode: <span class="accent-text">Postgres</span>, <span class="accent-text">MySQL</span>, <span class="accent-text">CockroachDB</span>, and <span class="accent-text">MariaDB</span> - that should cover most users out there.</p>
     </header>
+
+    <script>
+      (function () {
+        var toggle = document.getElementById('info-toggle');
+        var info = document.getElementById('dialect-info');
+        toggle.addEventListener('click', function () {
+          var hidden = info.hasAttribute('hidden');
+          if (hidden) {
+            info.removeAttribute('hidden');
+            toggle.textContent = 'Hide info';
+          } else {
+            info.setAttribute('hidden', '');
+            toggle.textContent = 'Show info';
+          }
+        });
+      })();
+    </script>
 
     <div class="mode-toggle" id="mode-toggle">
       <button class="mode-btn active" type="button" data-mode="generate">Generate SQL</button>
