@@ -665,6 +665,7 @@ body {
 
 .db-status-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.9rem;
   font-size: 0.9rem;
