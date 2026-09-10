@@ -44,8 +44,11 @@ function renderTable(rows) {
 }
 
 const persist = debounce(() => {
-  if (!currentOutputRows) return;
-  saveDraft(DRAFT_KEY, { currentOutputRows });
+  if (currentOutputRows) {
+    saveDraft(DRAFT_KEY, { currentOutputRows });
+  } else if (pendingText !== null) {
+    saveDraft(DRAFT_KEY, { pendingText });
+  }
 });
 
 worker.onmessage = (e) => {
@@ -134,6 +137,7 @@ function handleFile(file) {
       pendingText = reader.result;
       schemaPanel.classList.add('visible');
       term.say('File is ready. Add a schema (column,start,length) to convert.');
+      persist();
     };
     reader.readAsText(file);
   } else {
@@ -183,10 +187,6 @@ convertBtn.addEventListener('click', () => {
   tryRunFixed();
 });
 
-// Note: only a completed conversion is restorable. The in-between state
-// (a fixed-width file uploaded but waiting on its schema) isn't persisted,
-// since the source file itself isn't held anywhere durable while pending;
-// a refresh mid-way through that flow means re-uploading both files.
 clearBtn.addEventListener('click', () => {
   if (!currentOutputRows && pendingText === null) {
     term.error('No file to clear.');
@@ -207,6 +207,10 @@ clearBtn.addEventListener('click', () => {
     renderTable(currentOutputRows);
     save.show();
     term.say('Restored your last session.');
+  } else if (draft && draft.pendingText) {
+    pendingText = draft.pendingText;
+    schemaPanel.classList.add('visible');
+    term.say('Restored your last session. Add a schema (column,start,length) to convert.');
   } else {
     term.say('Upload a file to convert.');
   }
