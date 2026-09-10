@@ -1,5 +1,4 @@
-import { inject } from "@vercel/analytics";
-inject();
+import('@vercel/analytics').then(({ inject }) => inject()).catch(() => {});
 
 const root = document.documentElement;
 const toggle = document.getElementById('theme-toggle');
