@@ -23,7 +23,26 @@
     <header class="intro">
       <h1 class="title">sql2csv</h1>
       <p class="lead">Run a SQL query against a connected database and save the results as a CSV.</p>
+      <button type="button" class="info-toggle" id="info-toggle">Show info</button>
+      <p class="lead" id="dialect-info" hidden>In <span class="accent-text">sql2csv</span> you can connect to <span class="accent-text">PostgreSQL</span>, <span class="accent-text">MySQL</span>, <span class="accent-text">CockroachDB</span>, and <span class="accent-text">MariaDB</span> databases - that should cover most users out there.</p>
     </header>
+
+    <script>
+      (function () {
+        var toggle = document.getElementById('info-toggle');
+        var info = document.getElementById('dialect-info');
+        toggle.addEventListener('click', function () {
+          var hidden = info.hasAttribute('hidden');
+          if (hidden) {
+            info.removeAttribute('hidden');
+            toggle.textContent = 'Hide info';
+          } else {
+            info.setAttribute('hidden', '');
+            toggle.textContent = 'Show info';
+          }
+        });
+      })();
+    </script>
 
     <div class="field-row">
       <label class="field-label" for="connect-dialect-select">Database type</label>
